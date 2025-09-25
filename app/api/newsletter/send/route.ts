@@ -22,9 +22,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Newsletter not found" }, { status: 404 })
     }
 
-    // Get active subscribers
     const { data: subscribers, error: subscribersError } = await supabase
-      .from("subscribers")
+      .from("newsletter_subscribers")
       .select("email")
       .eq("status", "active")
 
@@ -41,7 +40,7 @@ export async function POST(request: NextRequest) {
       .update({
         status: "sent",
         sent_at: new Date().toISOString(),
-        sent_count: subscribers?.length || 0,
+        recipient_count: subscribers?.length || 0,
       })
       .eq("id", newsletterId)
 

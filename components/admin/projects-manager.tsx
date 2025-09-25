@@ -252,18 +252,18 @@ function ProjectForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => setFormData({ ...formData, category: value as Project["category"] })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="technical-writing">Technical Writing</SelectItem>
-                  <SelectItem value="cybersecurity">Cybersecurity</SelectItem>
-                </SelectContent>
-              </Select>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => setFormData({ ...formData, category: value as Project["category"] })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="technical-writing">Technical Writing</SelectItem>
+                    <SelectItem value="cybersecurity">Cybersecurity</SelectItem>
+                  </SelectContent>
+                </Select>
             </div>
           </div>
 
@@ -335,7 +335,7 @@ function ProjectForm({
                   onValueChange={(value) => setFormData({ ...formData, status: value as Project["status"] })}
                 >
                   <SelectTrigger className="w-32">
-                    <SelectValue />
+                    <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="draft">Draft</SelectItem>

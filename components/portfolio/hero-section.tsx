@@ -1,14 +1,16 @@
-import { Button } from "@/components/ui/button"
-import { ArrowRight, Github, Linkedin, Mail } from "lucide-react"
-import Link from "next/link"
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Github, Linkedin, Mail } from "lucide-react";
+import Link from "next/link";
 
 export function HeroSection() {
   return (
-    <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
+    <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-50 via-white to-white">
       <div className="max-w-4xl mx-auto">
         <div className="space-y-8">
           <div className="space-y-4">
-            <h1 className="text-4xl sm:text-6xl font-bold text-foreground text-balance">Alex Thompson</h1>
+            <h1 className="text-4xl sm:text-6xl font-bold text-foreground text-balance tracking-tight">
+              Joseph Ofonagoro Chisom
+            </h1>
             <p className="text-xl sm:text-2xl text-muted-foreground font-light">
               Technical Writer & Cybersecurity Specialist
             </p>
@@ -16,14 +18,16 @@ export function HeroSection() {
 
           <div className="space-y-6">
             <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl">
-              <em className="text-foreground">Crafting clear documentation</em> and securing digital landscapes.
-              Building polished technical content and robust security solutions. Experimenting with innovative
-              approaches to complex technical challenges.
+              <em className="text-foreground">Crafting clear documentation</em>{" "}
+              and securing digital landscapes. Building polished technical
+              content and robust security solutions. Experimenting with
+              innovative approaches to complex technical challenges.
             </p>
 
             <p className="text-base text-muted-foreground leading-relaxed max-w-2xl">
-              In the past I've developed comprehensive documentation systems, security protocols, and educational
-              content for startups and enterprises.
+              In the past I've developed comprehensive documentation systems,
+              security protocols, and educational content for startups and
+              enterprises.
             </p>
           </div>
 
@@ -65,5 +69,5 @@ export function HeroSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }

@@ -269,6 +269,7 @@ function BlogForm({
               <Label htmlFor="title">Title</Label>
               <Input
                 id="title"
+                placeholder="Blog post title"
                 value={formData.title || ""}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 required
@@ -278,9 +279,9 @@ function BlogForm({
               <Label htmlFor="slug">Slug</Label>
               <Input
                 id="slug"
+                placeholder="auto-generated-from-title"
                 value={formData.slug || ""}
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                placeholder="auto-generated-from-title"
               />
             </div>
           </div>
@@ -289,6 +290,7 @@ function BlogForm({
             <Label htmlFor="excerpt">Excerpt</Label>
             <Textarea
               id="excerpt"
+              placeholder="A brief summary of the blog post"
               value={formData.excerpt || ""}
               onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
               rows={2}
@@ -299,6 +301,7 @@ function BlogForm({
             <Label htmlFor="content">Content</Label>
             <Textarea
               id="content"
+              placeholder="Write your blog post content here"
               value={formData.content || ""}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
               rows={8}
@@ -344,7 +347,7 @@ function BlogForm({
                   onValueChange={(value) => setFormData({ ...formData, status: value as Blog["status"] })}
                 >
                   <SelectTrigger className="w-32">
-                    <SelectValue />
+                    <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="draft">Draft</SelectItem>

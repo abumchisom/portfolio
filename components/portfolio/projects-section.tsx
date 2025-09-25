@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ExternalLink, Github } from "lucide-react"
@@ -90,20 +89,26 @@ export function ProjectsSection() {
 
         <div className="grid md:grid-cols-2 gap-8">
           {filteredProjects.map((project, index) => (
-            <Card key={index} className="bg-card border-border overflow-hidden group">
+            <div
+              key={index}
+              className="border border-border/60 rounded-xl bg-background/50 overflow-hidden transition hover:border-primary/50"
+            >
+              {/* Image */}
               <div className="relative aspect-video overflow-hidden">
                 <Image
                   src={project.image || "/placeholder.svg"}
                   alt={project.title}
                   fill
-                  className="object-cover transition-transform group-hover:scale-105"
+                  className="object-cover rounded-md"
                 />
                 {project.featured && (
                   <Badge className="absolute top-4 left-4 bg-primary text-primary-foreground">Featured</Badge>
                 )}
               </div>
-              <CardHeader>
-                <div className="flex justify-between items-start mb-2">
+
+              {/* Content */}
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-3">
                   <Badge variant="secondary" className="text-xs capitalize">
                     {project.category.replace("-", " ")}
                   </Badge>
@@ -124,10 +129,10 @@ export function ProjectsSection() {
                     )}
                   </div>
                 </div>
-                <CardTitle className="text-xl">{project.title}</CardTitle>
-                <CardDescription className="text-muted-foreground">{project.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
+
+                <h3 className="text-lg font-semibold text-foreground mb-2">{project.title}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{project.description}</p>
+
                 <div className="flex flex-wrap gap-2">
                   {project.technologies.map((tech, techIndex) => (
                     <Badge key={techIndex} variant="outline" className="text-xs">
@@ -135,8 +140,8 @@ export function ProjectsSection() {
                     </Badge>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       </div>

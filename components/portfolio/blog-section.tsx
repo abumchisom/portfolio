@@ -1,4 +1,3 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Calendar } from "lucide-react"
@@ -39,6 +38,7 @@ export function BlogSection() {
   return (
     <section id="blog" className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/20">
       <div className="max-w-6xl mx-auto">
+        {/* Section Header */}
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold text-foreground mb-4">Latest Articles</h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -47,18 +47,27 @@ export function BlogSection() {
           </p>
         </div>
 
+        {/* Blog Grid */}
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           {blogPosts.map((post, index) => (
-            <Card key={index} className="bg-card border-border overflow-hidden group">
-              <div className="relative aspect-video overflow-hidden">
-                <Image
-                  src={post.image || "/placeholder.svg"}
-                  alt={post.title}
-                  fill
-                  className="object-cover transition-transform group-hover:scale-105"
-                />
+            <div
+              key={index}
+              className="border border-border/60 rounded-xl bg-white overflow-hidden transition hover:border-primary/50"
+            >
+              {/* Image with padding inside container */}
+              <div className="p-2">
+                <div className="relative aspect-video overflow-hidden rounded-md">
+                  <Image
+                    src={post.image || "/placeholder.svg"}
+                    alt={post.title}
+                    fill
+                    className="object-cover transition-transform hover:scale-105"
+                  />
+                </div>
               </div>
-              <CardHeader>
+
+              {/* Content */}
+              <div className="px-6 pb-6">
                 <div className="flex justify-between items-center mb-2">
                   <Badge variant="secondary" className="text-xs">
                     {post.category}
@@ -68,24 +77,25 @@ export function BlogSection() {
                     {new Date(post.publishedAt).toLocaleDateString()}
                   </div>
                 </div>
-                <CardTitle className="text-lg leading-tight">
+
+                <h3 className="text-lg font-semibold leading-tight mb-2">
                   <Link href={`/blog/${post.slug}`} className="hover:text-primary transition-colors">
                     {post.title}
                   </Link>
-                </CardTitle>
-                <CardDescription className="text-muted-foreground text-sm">{post.excerpt}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="ghost" size="sm" asChild className="p-0 h-auto">
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">{post.excerpt}</p>
+
+                <Button variant="ghost" size="sm" asChild className="h-auto">
                   <Link href={`/blog/${post.slug}`}>
                     Read more <ArrowRight className="ml-1 h-3 w-3" />
                   </Link>
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
 
+        {/* View All */}
         <div className="text-center">
           <Button variant="outline" asChild>
             <Link href="/blog">
