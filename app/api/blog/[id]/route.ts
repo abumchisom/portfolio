@@ -1,11 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+// GET
+export async function GET(
+  request: NextRequest,
+  context: { params: { id: string } }
+) {
+  const { params } = context
   try {
     const supabase = await createServerClient()
 
-    const { data: post, error } = await supabase.from("blog_posts").select("*").eq("id", params.id).single()
+    const { data: post, error } = await supabase
+      .from("blog_posts")
+      .select("*")
+      .eq("id", params.id)
+      .single()
 
     if (error) {
       console.error("Error fetching blog post:", error)
@@ -19,9 +28,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+// PUT
+export async function PUT(
+  request: NextRequest,
+  context: { params: { id: string } }
+) {
+  const { params } = context
   try {
-    const { title, content, excerpt, slug, category, tags, featured_image, published } = await request.json()
+    const { title, content, excerpt, slug, category, tags, featured_image, published } =
+      await request.json()
 
     const supabase = await createServerClient()
 
@@ -53,7 +68,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+// DELETE
+export async function DELETE(
+  request: NextRequest,
+  context: { params: { id: string } }
+) {
+  const { params } = context
   try {
     const supabase = await createServerClient()
 
