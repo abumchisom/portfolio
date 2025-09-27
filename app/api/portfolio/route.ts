@@ -5,14 +5,20 @@ export async function GET() {
   try {
     const supabase = await createServerClient()
 
-    const { data: portfolio, error } = await supabase.from("portfolio_info").select("*").single()
+    const [portfolioResult, aboutUsResult] = await Promise.all([
+      supabase.from("portfolio_info").select("*").single(),
+      supabase.from("about_us").select("*").single(),
+    ])
 
-    if (error) {
-      console.error("Error fetching portfolio info:", error)
+    if (portfolioResult.error) {
+      console.error("Error fetching portfolio info:", portfolioResult.error)
       return NextResponse.json({ error: "Failed to fetch portfolio info" }, { status: 500 })
     }
 
-    return NextResponse.json({ portfolio })
+    return NextResponse.json({
+      portfolio: portfolioResult.data,
+      aboutUs: aboutUsResult.data || null,
+    })
   } catch (error) {
     console.error("Error in portfolio GET:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

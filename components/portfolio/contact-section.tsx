@@ -3,7 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Mail, MapPin, Phone } from "lucide-react"
 import Link from "next/link"
 
-export function ContactSection() {
+interface ContactSectionProps {
+  portfolio?: {
+    email?: string
+    phone?: string
+    location?: string
+  } | null
+}
+
+export function ContactSection({ portfolio }: ContactSectionProps) {
   return (
     <section id="contact" className="py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
@@ -30,10 +38,10 @@ export function ContactSection() {
                 <div>
                   <p className="font-medium">Email</p>
                   <Link
-                    href="mailto:alex@example.com"
+                    href={`mailto:${portfolio?.email || "alex@example.com"}`}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    alex@example.com
+                    {portfolio?.email || "alex@example.com"}
                   </Link>
                 </div>
               </div>
@@ -42,10 +50,10 @@ export function ContactSection() {
                 <div>
                   <p className="font-medium">Phone</p>
                   <Link
-                    href="tel:+15551234567"
+                    href={`tel:${portfolio?.phone?.replace(/\D/g, "") || "15551234567"}`}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    +1 (555) 123-4567
+                    {portfolio?.phone || "No phone available."}
                   </Link>
                 </div>
               </div>
@@ -53,7 +61,7 @@ export function ContactSection() {
                 <MapPin className="h-5 w-5 text-primary" />
                 <div>
                   <p className="font-medium">Location</p>
-                  <p className="text-muted-foreground">San Francisco, CA</p>
+                  <p className="text-muted-foreground">{portfolio?.location || "San Francisco, CA"}</p>
                 </div>
               </div>
             </CardContent>
@@ -80,7 +88,7 @@ export function ContactSection() {
                 <p className="text-sm text-muted-foreground">Monday - Friday, 9 AM - 6 PM PST</p>
               </div>
               <Button asChild className="w-full">
-                <Link href="mailto:alex@example.com">Send Email</Link>
+                <Link href={`mailto:${portfolio?.email || "alex@example.com"}`}>Send Email</Link>
               </Button>
             </CardContent>
           </Card>

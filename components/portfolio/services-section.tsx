@@ -1,65 +1,46 @@
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 
-const services = [
-  {
-    title: "Technical Documentation",
-    description:
-      "Comprehensive technical documentation services including API documentation, user guides, and developer resources.",
-    category: "Technical Writing",
-    priceRange: "$50-150/hour",
-    features: [
-      "API Documentation",
-      "User Guides",
-      "Developer Resources",
-      "Process Documentation",
-      "Knowledge Base Creation",
-    ],
-  },
-  {
-    title: "Security Auditing",
-    description:
-      "Thorough security assessments and vulnerability testing for web applications and systems.",
-    category: "Cybersecurity",
-    priceRange: "$100-200/hour",
-    features: [
-      "Vulnerability Assessment",
-      "Penetration Testing",
-      "Security Code Review",
-      "Compliance Auditing",
-      "Risk Assessment",
-    ],
-  },
-  {
-    title: "Content Strategy",
-    description:
-      "Strategic content planning and creation for technical products and security awareness programs.",
-    category: "Technical Writing",
-    priceRange: "$75-125/hour",
-    features: [
-      "Content Strategy",
-      "Editorial Planning",
-      "Technical Blogging",
-      "Training Materials",
-      "Style Guide Development",
-    ],
-  },
-  {
-    title: "Security Consulting",
-    description:
-      "Expert cybersecurity consulting services for businesses looking to improve their security posture.",
-    category: "Cybersecurity",
-    priceRange: "$150-250/hour",
-    features: [
-      "Security Architecture",
-      "Incident Response Planning",
-      "Security Training",
-      "Policy Development",
-      "Compliance Guidance",
-    ],
-  },
-];
+interface Service {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  price_range: string;
+  features: string[];
+  active: boolean;
+}
 
 export function ServicesSection() {
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const fetchServices = async () => {
+    try {
+      const response = await fetch("/api/services");
+      if (response.ok) {
+        const data = await response.json();
+        setServices(data.filter((service: Service) => service.active));
+      }
+    } catch (error) {
+      console.error("Error fetching services:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <section id="services" className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto text-center">Loading services...</div>
+      </section>
+    );
+  }
+
   return (
     <section id="services" className="py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
@@ -72,9 +53,9 @@ export function ServicesSection() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
-          {services.map((service, index) => (
+          {services.map((service) => (
             <div
-              key={index}
+              key={service.id}
               className="group relative rounded-xl border border-border/60 bg-background/50 p-6 transition hover:border-primary/40"
             >
               <div className="flex justify-between items-start mb-4">
@@ -82,7 +63,7 @@ export function ServicesSection() {
                   {service.category}
                 </Badge>
                 <span className="text-lg font-bold text-primary">
-                  {service.priceRange}
+                  {service.price_range}
                 </span>
               </div>
 
