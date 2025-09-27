@@ -1,11 +1,22 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+// Shared type for dynamic route params
+type ProjectRouteContext = {
+  params: Promise<{ id: string }>
+}
+
+// GET
+export async function GET(request: NextRequest, { params }: ProjectRouteContext) {
   try {
     const supabase = await createServerClient()
+    const resolvedParams = await params // Resolve the params Promise
 
-    const { data: project, error } = await supabase.from("projects").select("*").eq("id", params.id).single()
+    const { data: project, error } = await supabase
+      .from("projects")
+      .select("*")
+      .eq("id", resolvedParams.id)
+      .single()
 
     if (error) {
       console.error("Error fetching project:", error)
@@ -19,10 +30,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+// PUT
+export async function PUT(request: NextRequest, { params }: ProjectRouteContext) {
   try {
     const { title, description, technologies, category, github_url, live_url, image_url, featured } =
       await request.json()
+    const resolvedParams = await params // Resolve the params Promise
 
     const supabase = await createServerClient()
 
@@ -38,7 +51,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         image_url,
         featured,
       })
-      .eq("id", params.id)
+      .eq("id", resolvedParams.id)
       .select()
       .single()
 
@@ -54,11 +67,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+// DELETE
+export async function DELETE(request: NextRequest, { params }: ProjectRouteContext) {
   try {
     const supabase = await createServerClient()
+    const resolvedParams = await params // Resolve the params Promise
 
-    const { error } = await supabase.from("projects").delete().eq("id", params.id)
+    const { error } = await supabase.from("projects").delete().eq("id", resolvedParams.id)
 
     if (error) {
       console.error("Error deleting project:", error)

@@ -1,19 +1,21 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 
+// Shared type for dynamic route params
+type BlogRouteContext = {
+  params: Promise<{ id: string }>
+}
+
 // GET
-export async function GET(
-  request: NextRequest,
-  context: { params: { id: string } }
-) {
-  const { params } = context
+export async function GET(request: NextRequest, { params }: BlogRouteContext) {
   try {
     const supabase = await createServerClient()
+    const resolvedParams = await params // Resolve the params Promise
 
     const { data: post, error } = await supabase
       .from("blog_posts")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", resolvedParams.id)
       .single()
 
     if (error) {
@@ -29,14 +31,11 @@ export async function GET(
 }
 
 // PUT
-export async function PUT(
-  request: NextRequest,
-  context: { params: { id: string } }
-) {
-  const { params } = context
+export async function PUT(request: NextRequest, { params }: BlogRouteContext) {
   try {
     const { title, content, excerpt, slug, category, tags, featured_image, published } =
       await request.json()
+    const resolvedParams = await params // Resolve the params Promise
 
     const supabase = await createServerClient()
 
@@ -52,7 +51,7 @@ export async function PUT(
         featured_image,
         published,
       })
-      .eq("id", params.id)
+      .eq("id", resolvedParams.id)
       .select()
       .single()
 
@@ -69,15 +68,12 @@ export async function PUT(
 }
 
 // DELETE
-export async function DELETE(
-  request: NextRequest,
-  context: { params: { id: string } }
-) {
-  const { params } = context
+export async function DELETE(request: NextRequest, { params }: BlogRouteContext) {
   try {
     const supabase = await createServerClient()
+    const resolvedParams = await params // Resolve the params Promise
 
-    const { error } = await supabase.from("blog_posts").delete().eq("id", params.id)
+    const { error } = await supabase.from("blog_posts").delete().eq("id", resolvedParams.id)
 
     if (error) {
       console.error("Error deleting blog post:", error)
