@@ -1,58 +1,75 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
-import { RichTextEditor } from "@/components/ui/rich-text-editor"
-import { useToast } from "@/hooks/use-toast"
-import { createClient } from "@/lib/supabase/client"
-import { Plus, Save, Clock, Hash, FileText, Settings, Trash2 } from "lucide-react"
-import type { Blog } from "@/lib/types"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { useToast } from "@/hooks/use-toast";
+import { createClient } from "@/lib/supabase/client";
+import {
+  Plus,
+  Save,
+  Clock,
+  Hash,
+  FileText,
+  Settings,
+  Trash2,
+} from "lucide-react";
+import type { Blog } from "@/lib/types";
 
 export function BlogEditor() {
-  const [blogs, setBlogs] = useState<Blog[]>([])
-  const [draftBlogs, setDraftBlogs] = useState<Blog[]>([])
-  const [publishedBlogs, setPublishedBlogs] = useState<Blog[]>([])
-  const [selectedBlog, setSelectedBlog] = useState<Partial<Blog> | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
-  const { toast } = useToast()
-  const supabase = createClient()
+  const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [draftBlogs, setDraftBlogs] = useState<Blog[]>([]);
+  const [publishedBlogs, setPublishedBlogs] = useState<Blog[]>([]);
+  const [selectedBlog, setSelectedBlog] = useState<Partial<Blog> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const { toast } = useToast();
+  const supabase = createClient();
 
   useEffect(() => {
-    loadBlogs()
-  }, [])
+    loadBlogs();
+  }, []);
 
   useEffect(() => {
     // Separate blogs by status
-    setDraftBlogs(blogs.filter((blog) => blog.status === "draft"))
-    setPublishedBlogs(blogs.filter((blog) => blog.status === "published"))
-  }, [blogs])
+    setDraftBlogs(blogs.filter((blog) => blog.status === "draft"));
+    setPublishedBlogs(blogs.filter((blog) => blog.status === "published"));
+  }, [blogs]);
 
   const loadBlogs = async () => {
     try {
-      const { data, error } = await supabase.from("blogs").select("*").order("updated_at", { ascending: false })
+      const { data, error } = await supabase
+        .from("blogs")
+        .select("*")
+        .order("updated_at", { ascending: false });
 
-      if (error) throw error
-      setBlogs(data || [])
+      if (error) throw error;
+      setBlogs(data || []);
     } catch (error) {
-      console.error("Error loading blogs:", error)
+      console.error("Error loading blogs:", error);
       toast({
         title: "Error",
         description: "Failed to load blog posts.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const generateSlug = (title: string) => {
     return title
@@ -60,39 +77,39 @@ export function BlogEditor() {
       .replace(/[^a-z0-9 -]/g, "")
       .replace(/\s+/g, "-")
       .replace(/-+/g, "-")
-      .trim()
-  }
+      .trim();
+  };
 
   const calculateReadingTime = (content: string) => {
-    const words = content.replace(/<[^>]*>/g, "").split(/\s+/).length
-    return Math.ceil(words / 200)
-  }
+    const words = content.replace(/<[^>]*>/g, "").split(/\s+/).length;
+    return Math.ceil(words / 200);
+  };
 
   const countWords = (content: string) => {
     return content
       .replace(/<[^>]*>/g, "")
       .split(/\s+/)
-      .filter((word) => word.length > 0).length
-  }
+      .filter((word) => word.length > 0).length;
+  };
 
   const countParagraphs = (content: string) => {
-    return content.split(/\n\s*\n/).filter((p) => p.trim().length > 0).length
-  }
+    return content.split(/\n\s*\n/).filter((p) => p.trim().length > 0).length;
+  };
 
   const handleSave = async (blogData: Partial<Blog>, publish = false) => {
-    setIsSaving(true)
+    setIsSaving(true);
     try {
       // Generate slug if not provided
       if (blogData.title && !blogData.slug) {
-        blogData.slug = generateSlug(blogData.title)
+        blogData.slug = generateSlug(blogData.title);
       }
 
       // Set status
       if (publish) {
-        blogData.status = "published"
-        blogData.published_at = new Date().toISOString()
+        blogData.status = "published";
+        blogData.published_at = new Date().toISOString();
       } else {
-        blogData.status = "draft"
+        blogData.status = "draft";
       }
 
       if (selectedBlog?.id) {
@@ -103,61 +120,67 @@ export function BlogEditor() {
             ...blogData,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", selectedBlog.id)
+          .eq("id", selectedBlog.id);
 
-        if (error) throw error
+        if (error) throw error;
       } else {
         // Create new blog
-        const { data, error } = await supabase.from("blogs").insert(blogData).select().single()
+        const { data, error } = await supabase
+          .from("blogs")
+          .insert(blogData)
+          .select()
+          .single();
 
-        if (error) throw error
-        setSelectedBlog(data)
+        if (error) throw error;
+        setSelectedBlog(data);
       }
 
       toast({
         title: "Success",
-        description: `Blog post ${publish ? "published" : "saved as draft"} successfully!`,
-      })
+        description: `Blog post ${
+          publish ? "published" : "saved as draft"
+        } successfully!`,
+      });
 
-      loadBlogs()
-      setShowSettings(false)
+      loadBlogs();
+      setShowSettings(false);
     } catch (error) {
-      console.error("Error saving blog:", error)
+      console.error("Error saving blog:", error);
       toast({
         title: "Error",
         description: "Failed to save blog post.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this blog post?")) return
+    if (!confirm("Are you sure you want to delete this blog post?")) return;
 
     try {
-      const { error } = await supabase.from("blogs").delete().eq("id", id)
-      if (error) throw error
+      const { error } = await supabase.from("blogs").delete().eq("id", id);
+      if (error) throw error;
 
       toast({
         title: "Success",
         description: "Blog post deleted successfully!",
-      })
+      });
 
       if (selectedBlog?.id === id) {
-        setSelectedBlog(null)
+        setSelectedBlog(null);
       }
-      loadBlogs()
+      loadBlogs();
     } catch (error) {
-      console.error("Error deleting blog:", error)
+      console.error("Error deleting blog:", error);
       toast({
         title: "Error",
         description: "Failed to delete blog post.",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const createNewBlog = () => {
     setSelectedBlog({
@@ -169,11 +192,11 @@ export function BlogEditor() {
       featured: false,
       status: "draft",
       tags: [],
-    })
-  }
+    });
+  };
 
   if (isLoading) {
-    return <div>Loading blog editor...</div>
+    return <div>Loading blog editor...</div>;
   }
 
   return (
@@ -188,32 +211,40 @@ export function BlogEditor() {
         {/* Draft Blogs */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Draft Posts ({draftBlogs.length})</CardTitle>
+            <CardTitle className="text-sm">
+              Draft Posts ({draftBlogs.length})
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 max-h-60 overflow-y-auto">
             {draftBlogs.map((blog) => (
               <div
                 key={blog.id}
                 className={`p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
-                  selectedBlog?.id === blog.id ? "bg-muted border-primary" : "bg-card"
+                  selectedBlog?.id === blog.id
+                    ? "bg-muted border-primary"
+                    : "bg-card"
                 }`}
                 onClick={() => setSelectedBlog(blog)}
               >
                 <div className="flex justify-between items-start mb-1">
-                  <h4 className="font-medium text-sm line-clamp-1">{blog.title || "Untitled"}</h4>
+                  <h4 className="font-medium text-sm line-clamp-1">
+                    {blog.title || "Untitled"}
+                  </h4>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={(e) => {
-                      e.stopPropagation()
-                      handleDelete(blog.id)
+                      e.stopPropagation();
+                      handleDelete(blog.id);
                     }}
                     className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground line-clamp-2">{blog.excerpt || "No excerpt"}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  {blog.excerpt || "No excerpt"}
+                </p>
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-xs text-muted-foreground">
                     {new Date(blog.updated_at).toLocaleDateString()}
@@ -227,7 +258,9 @@ export function BlogEditor() {
               </div>
             ))}
             {draftBlogs.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No draft posts</p>
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No draft posts
+              </p>
             )}
           </CardContent>
         </Card>
@@ -235,25 +268,35 @@ export function BlogEditor() {
         {/* Published Blogs */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Published Posts ({publishedBlogs.length})</CardTitle>
+            <CardTitle className="text-sm">
+              Published Posts ({publishedBlogs.length})
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 max-h-60 overflow-y-auto">
             {publishedBlogs.map((blog) => (
               <div
                 key={blog.id}
                 className={`p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
-                  selectedBlog?.id === blog.id ? "bg-muted border-primary" : "bg-card"
+                  selectedBlog?.id === blog.id
+                    ? "bg-muted border-primary"
+                    : "bg-card"
                 }`}
                 onClick={() => setSelectedBlog(blog)}
               >
                 <div className="flex justify-between items-start mb-1">
-                  <h4 className="font-medium text-sm line-clamp-1">{blog.title}</h4>
+                  <h4 className="font-medium text-sm line-clamp-1">
+                    {blog.title}
+                  </h4>
                   <Badge className="text-xs">Published</Badge>
                 </div>
-                <p className="text-xs text-muted-foreground line-clamp-2">{blog.excerpt}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  {blog.excerpt}
+                </p>
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-xs text-muted-foreground">
-                    {blog.published_at ? new Date(blog.published_at).toLocaleDateString() : ""}
+                    {blog.published_at
+                      ? new Date(blog.published_at).toLocaleDateString()
+                      : ""}
                   </span>
                   {blog.featured && (
                     <Badge variant="secondary" className="text-xs">
@@ -264,7 +307,9 @@ export function BlogEditor() {
               </div>
             ))}
             {publishedBlogs.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No published posts</p>
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No published posts
+              </p>
             )}
           </CardContent>
         </Card>
@@ -279,13 +324,20 @@ export function BlogEditor() {
               <div className="flex items-center gap-2">
                 <Input
                   value={selectedBlog.title || ""}
-                  onChange={(e) => setSelectedBlog({ ...selectedBlog, title: e.target.value })}
+                  onChange={(e) =>
+                    setSelectedBlog({ ...selectedBlog, title: e.target.value })
+                  }
                   placeholder="Blog post title..."
                   className="text-lg font-semibold border-none shadow-none px-0 focus-visible:ring-0"
                 />
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleSave(selectedBlog)} disabled={isSaving}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSave(selectedBlog)}
+                  disabled={isSaving}
+                >
                   <Save className="h-4 w-4 mr-2" />
                   {isSaving ? "Saving..." : "Save Draft"}
                 </Button>
@@ -310,13 +362,15 @@ export function BlogEditor() {
             <div className="flex-1">
               <RichTextEditor
                 value={selectedBlog.content || ""}
-                onChange={(content) => setSelectedBlog({ ...selectedBlog, content })}
+                onChange={(content) =>
+                  setSelectedBlog({ ...selectedBlog, content })
+                }
                 placeholder="Start writing your blog post..."
                 className="h-full"
                 showImageUpload={true}
                 onImageUpload={async (file) => {
                   // TODO: Implement image upload to storage
-                  return URL.createObjectURL(file)
+                  return URL.createObjectURL(file);
                 }}
               />
             </div>
@@ -325,9 +379,12 @@ export function BlogEditor() {
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No blog post selected</h3>
+              <h3 className="text-lg font-medium mb-2">
+                No blog post selected
+              </h3>
               <p className="text-muted-foreground mb-4">
-                Select a blog post from the sidebar or create a new one to start editing.
+                Select a blog post from the sidebar or create a new one to start
+                editing.
               </p>
               <Button onClick={createNewBlog}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -338,7 +395,7 @@ export function BlogEditor() {
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function BlogSettingsDialog({
@@ -347,24 +404,28 @@ function BlogSettingsDialog({
   onClose,
   isSaving,
 }: {
-  blog: Partial<Blog>
-  onSave: (blog: Partial<Blog>, publish?: boolean) => void
-  onClose: () => void
-  isSaving: boolean
+  blog: Partial<Blog>;
+  onSave: (blog: Partial<Blog>, publish?: boolean) => void;
+  onClose: () => void;
+  isSaving: boolean;
 }) {
-  const [formData, setFormData] = useState(blog)
+  const [formData, setFormData] = useState(blog);
 
   const handleTagsChange = (value: string) => {
     const tags = value
       .split(",")
       .map((tag) => tag.trim())
-      .filter(Boolean)
-    setFormData({ ...formData, tags })
-  }
+      .filter(Boolean);
+    setFormData({ ...formData, tags });
+  };
 
-  const wordCount = formData.content ? countWords(formData.content) : 0
-  const paragraphCount = formData.content ? countParagraphs(formData.content) : 0
-  const readingTime = formData.content ? calculateReadingTime(formData.content) : 0
+  const wordCount = formData.content ? countWords(formData.content) : 0;
+  const paragraphCount = formData.content
+    ? countParagraphs(formData.content)
+    : 0;
+  const readingTime = formData.content
+    ? calculateReadingTime(formData.content)
+    : 0;
 
   return (
     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -411,7 +472,9 @@ function BlogSettingsDialog({
             <Input
               id="slug"
               value={formData.slug || ""}
-              onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, slug: e.target.value })
+              }
               placeholder="auto-generated-from-title"
             />
           </div>
@@ -421,7 +484,9 @@ function BlogSettingsDialog({
             <Textarea
               id="excerpt"
               value={formData.excerpt || ""}
-              onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, excerpt: e.target.value })
+              }
               rows={3}
               placeholder="Brief description of your blog post..."
             />
@@ -432,7 +497,9 @@ function BlogSettingsDialog({
             <Input
               id="image_url"
               value={formData.image_url || ""}
-              onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, image_url: e.target.value })
+              }
               placeholder="https://example.com/image.jpg"
             />
           </div>
@@ -443,18 +510,68 @@ function BlogSettingsDialog({
               <Input
                 id="category"
                 value={formData.category || ""}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, category: e.target.value })
+                }
                 placeholder="Technical Writing, Cybersecurity, etc."
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tags">Tags (comma-separated)</Label>
-              <Input
-                id="tags"
-                value={formData.tags?.join(", ") || ""}
-                onChange={(e) => handleTagsChange(e.target.value)}
-                placeholder="documentation, security, best practices"
-              />
+              <Label htmlFor="tags">Tags</Label>
+              <div
+                className="flex flex-wrap items-center gap-2 border rounded-md px-2 py-2 min-h-[42px] focus-within:ring-2 focus-within:ring-ring"
+                onClick={() => document.getElementById("tagInput")?.focus()}
+              >
+                {formData.tags?.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="flex items-center gap-1 bg-gray-100 text-gray-700 text-sm px-2 py-1 rounded"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newTags = formData.tags!.filter(
+                          (_, i) => i !== index
+                        );
+                        setFormData({ ...formData, tags: newTags });
+                      }}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+
+                <input
+                  id="tagInput"
+                  type="text"
+                  className="flex-grow outline-none border-none bg-transparent text-sm"
+                  placeholder="Type and press Enter or Space..."
+                  onKeyDown={(e) => {
+                    if (["Enter", " "].includes(e.key)) {
+                      e.preventDefault();
+                      const value = e.currentTarget.value.trim();
+                      if (value && !formData.tags?.includes(value)) {
+                        setFormData({
+                          ...formData,
+                          tags: [...(formData.tags || []), value],
+                        });
+                      }
+                      e.currentTarget.value = "";
+                    } else if (
+                      e.key === "Backspace" &&
+                      e.currentTarget.value === "" &&
+                      formData.tags?.length
+                    ) {
+                      // Remove last tag when backspace pressed with empty input
+                      const newTags = [...formData.tags];
+                      newTags.pop();
+                      setFormData({ ...formData, tags: newTags });
+                    }
+                  }}
+                />
+              </div>
             </div>
           </div>
 
@@ -462,7 +579,9 @@ function BlogSettingsDialog({
             <Switch
               id="featured"
               checked={formData.featured || false}
-              onCheckedChange={(checked) => setFormData({ ...formData, featured: checked })}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, featured: checked })
+              }
             />
             <Label htmlFor="featured">Featured Post</Label>
           </div>
@@ -474,7 +593,11 @@ function BlogSettingsDialog({
             Cancel
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onSave(formData, false)} disabled={isSaving}>
+            <Button
+              variant="outline"
+              onClick={() => onSave(formData, false)}
+              disabled={isSaving}
+            >
               Save Draft
             </Button>
             <Button onClick={() => onSave(formData, true)} disabled={isSaving}>
@@ -484,7 +607,7 @@ function BlogSettingsDialog({
         </div>
       </div>
     </DialogContent>
-  )
+  );
 }
 
 // Helper functions
@@ -492,14 +615,14 @@ function countWords(content: string): number {
   return content
     .replace(/<[^>]*>/g, "")
     .split(/\s+/)
-    .filter((word) => word.length > 0).length
+    .filter((word) => word.length > 0).length;
 }
 
 function countParagraphs(content: string): number {
-  return content.split(/\n\s*\n/).filter((p) => p.trim().length > 0).length
+  return content.split(/\n\s*\n/).filter((p) => p.trim().length > 0).length;
 }
 
 function calculateReadingTime(content: string): number {
-  const words = countWords(content)
-  return Math.ceil(words / 200)
+  const words = countWords(content);
+  return Math.ceil(words / 200);
 }
