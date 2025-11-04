@@ -1,11 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase/server"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params
+
   try {
     const supabase = createServerClient()
 
-    const { data: service, error } = await (await supabase).from("services").select("*").eq("id", params.id).single()
+    const { data: service, error } = await (await supabase)
+      .from("services")
+      .select("*")
+      .eq("id", id)
+      .single()
 
     if (error) {
       console.error("Error fetching service:", error)
@@ -19,7 +28,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params
+
   try {
     const supabase = createServerClient()
     const body = await request.json()
@@ -34,10 +48,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         category,
         price_range,
         features: features || [],
-        active: active !== undefined ? active : true,
+        active: active ?? true,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", params.id)
+      .eq("id", id)
       .select()
       .single()
 
@@ -53,11 +67,19 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params
+
   try {
     const supabase = createServerClient()
 
-    const { error } = await (await supabase).from("services").delete().eq("id", params.id)
+    const { error } = await (await supabase)
+      .from("services")
+      .delete()
+      .eq("id", id)
 
     if (error) {
       console.error("Error deleting service:", error)
