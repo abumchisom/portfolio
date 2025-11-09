@@ -492,6 +492,7 @@ function BlogSettingsDialog({
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="image_url">Featured Image URL</Label>
             <Input
@@ -503,6 +504,18 @@ function BlogSettingsDialog({
               placeholder="https://example.com/image.jpg"
             />
           </div>
+          <div className="space-y-2">
+  <Label htmlFor="canonical_url">Canonical URL</Label>
+  <Input
+    id="canonical_url"
+    value={formData.canonical_url || ""}
+    onChange={(e) =>
+      setFormData({ ...formData, canonical_url: e.target.value })
+    }
+    placeholder="https://medium.com/@you/original-article"
+  />
+</div>
+</div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

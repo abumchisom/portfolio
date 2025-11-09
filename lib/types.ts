@@ -38,6 +38,7 @@ export interface Blog {
   excerpt?: string
   content: string
   category?: string
+  canonical_url?: string
   featured: boolean
   image_url?: string
   tags: string[]

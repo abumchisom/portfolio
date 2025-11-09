@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS blogs (
   excerpt TEXT,
   content TEXT NOT NULL,
   category VARCHAR(100),
+  canonical_url VARCHAR(255),
   featured BOOLEAN DEFAULT FALSE,
   image_url VARCHAR(500),
   tags TEXT[], -- Array of tags
