@@ -28,7 +28,7 @@ export function HeroSection({ portfolio }: HeroSectionProps) {
             </p>
           </div>
 
-          <div className="space-y-6">
+          {/* <div className="space-y-6">
             <p className="text-lg text-muted-foreground leading-relaxed max-w-2xl">
               {portfolio?.bio
                 ? ` ${portfolio.bio.substring(0, 200)}...`
@@ -39,7 +39,7 @@ export function HeroSection({ portfolio }: HeroSectionProps) {
               In the past I've developed comprehensive documentation systems, security protocols, and educational
               content for startups and enterprises.
             </p>
-          </div>
+          </div> */}
 
           <div className="flex flex-wrap gap-4">
             <Button asChild size="lg">
