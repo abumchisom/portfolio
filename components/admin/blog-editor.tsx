@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -353,6 +353,7 @@ export function BlogEditor() {
                     onSave={handleSave}
                     onClose={() => setShowSettings(false)}
                     isSaving={isSaving}
+                    generateSlug={generateSlug}
                   />
                 </Dialog>
               </div>
@@ -403,13 +404,38 @@ function BlogSettingsDialog({
   onSave,
   onClose,
   isSaving,
+  generateSlug,
 }: {
   blog: Partial<Blog>;
   onSave: (blog: Partial<Blog>, publish?: boolean) => void;
   onClose: () => void;
   isSaving: boolean;
+  generateSlug: (title: string) => string;
 }) {
   const [formData, setFormData] = useState(blog);
+
+  // Update formData when blog prop changes (e.g., title updated in main editor)
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, ...blog }));
+  }, [blog]);
+
+  // Auto-set suggestions on dialog mount if empty
+  useEffect(() => {
+    if (blog.content) {
+      setFormData((prev) => {
+        const newData = { ...prev };
+        const suggestedTags = getSuggestedTags(blog.content || "");
+        const suggestedCategory = getSuggestedCategory(suggestedTags);
+        if (!newData.category) {
+          newData.category = suggestedCategory;
+        }
+        if (!newData.tags?.length) {
+          newData.tags = suggestedTags;
+        }
+        return newData;
+      });
+    }
+  }, []); // Only run once on mount
 
   const handleTagsChange = (value: string) => {
     const tags = value
@@ -419,6 +445,15 @@ function BlogSettingsDialog({
     setFormData({ ...formData, tags });
   };
 
+  // Auto-generate slug from title if not set
+  const computedSlug = useMemo(() => {
+    if (formData.slug) return formData.slug;
+    return generateSlug(formData.title || "");
+  }, [formData.slug, formData.title, generateSlug]);
+
+  const suggestedTags = useMemo(() => getSuggestedTags(formData.content || ''), [formData.content]);
+  const suggestedCategory = useMemo(() => getSuggestedCategory(suggestedTags), [suggestedTags]);
+
   const wordCount = formData.content ? countWords(formData.content) : 0;
   const paragraphCount = formData.content
     ? countParagraphs(formData.content)
@@ -426,6 +461,13 @@ function BlogSettingsDialog({
   const readingTime = formData.content
     ? calculateReadingTime(formData.content)
     : 0;
+
+  const finalData = useMemo(() => ({
+    ...formData,
+    slug: computedSlug,
+    category: formData.category || suggestedCategory,
+    tags: formData.tags?.length ? formData.tags : suggestedTags,
+  }), [formData, computedSlug, suggestedCategory, suggestedTags]);
 
   return (
     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -468,13 +510,12 @@ function BlogSettingsDialog({
         {/* Form Fields */}
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="slug">URL Slug</Label>
+            <Label htmlFor="slug">URL Slug (Auto-generated)</Label>
             <Input
               id="slug"
-              value={formData.slug || ""}
-              onChange={(e) =>
-                setFormData({ ...formData, slug: e.target.value })
-              }
+              value={computedSlug}
+              readOnly
+              className="bg-muted/50 cursor-not-allowed"
               placeholder="auto-generated-from-title"
             />
           </div>
@@ -524,7 +565,7 @@ function BlogSettingsDialog({
                 id="category"
                 value={formData.category || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value })
+                  setFormData({ ...formData, category: e.target.value || undefined })
                 }
                 placeholder="Technical Writing, Cybersecurity, etc."
               />
@@ -560,9 +601,9 @@ function BlogSettingsDialog({
                   id="tagInput"
                   type="text"
                   className="flex-grow outline-none border-none bg-transparent text-sm"
-                  placeholder="Type and press Enter or Space..."
+                  placeholder="Type and press Enter..."
                   onKeyDown={(e) => {
-                    if (["Enter", " "].includes(e.key)) {
+                    if (e.key === "Enter") {
                       e.preventDefault();
                       const value = e.currentTarget.value.trim();
                       if (value && !formData.tags?.includes(value)) {
@@ -608,12 +649,12 @@ function BlogSettingsDialog({
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => onSave(formData, false)}
+              onClick={() => onSave(finalData, false)}
               disabled={isSaving}
             >
               Save Draft
             </Button>
-            <Button onClick={() => onSave(formData, true)} disabled={isSaving}>
+            <Button onClick={() => onSave(finalData, true)} disabled={isSaving}>
               {formData.status === "published" ? "Update" : "Publish"}
             </Button>
           </div>
@@ -638,4 +679,25 @@ function countParagraphs(content: string): number {
 function calculateReadingTime(content: string): number {
   const words = countWords(content);
   return Math.ceil(words / 200);
+}
+
+const stopWords = [
+  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their'
+];
+
+function getSuggestedTags(content: string): string[] {
+  const text = content.replace(/<[^>]*>/g, '').toLowerCase();
+  const words = text.split(/\s+/).filter(word => word.length > 3 && !stopWords.includes(word));
+  const freq: Record<string, number> = words.reduce((acc: Record<string, number>, word) => {
+    acc[word] = (acc[word] || 0) + 1;
+    return acc;
+  }, {});
+  return Object.entries(freq)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([word]) => word);
+}
+
+function getSuggestedCategory(suggestedTags: string[]): string {
+  return suggestedTags[0] || '';
 }

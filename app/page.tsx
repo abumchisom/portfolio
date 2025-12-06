@@ -12,6 +12,7 @@ export default async function HomePage() {
   let portfolioData = null
   let aboutUsData = null
   let blogs = []
+  let projects = []
 
   try {
     // Fetch portfolio data
@@ -24,6 +25,17 @@ export default async function HomePage() {
       const data = await response.json()
       portfolioData = data.portfolio
       aboutUsData = data.aboutUs
+    }
+
+    // Fetch projects data
+    const projectsResponse = await fetch(
+      `${process.env.NEXT_FRONTEND_URL || "http://localhost:3000"}/api/projects`,
+      { cache: "no-store" }
+    )
+
+    if (projectsResponse.ok) {
+      const projectsData = await projectsResponse.json()
+      projects = projectsData.projects || []
     }
 
     // Fetch blogs from Supabase
@@ -49,7 +61,7 @@ export default async function HomePage() {
         <HeroSection portfolio={portfolioData} />
         <AboutSection portfolio={portfolioData} aboutUs={aboutUsData} />
         <ServicesSection />
-        <ProjectsSection />
+        <ProjectsSection projects={projects} />
         <BlogSection blogs={blogs} />
         <NewsletterSignup />
         <ContactSection portfolio={portfolioData} />

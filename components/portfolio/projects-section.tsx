@@ -7,51 +7,22 @@ import { ExternalLink, Github } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
-const projects = [
-  {
-    title: "API Documentation Portal",
-    description:
-      "Comprehensive API documentation portal built with modern documentation tools and interactive examples.",
-    category: "technical-writing",
-    featured: true,
-    image: "/api-documentation-portal-interface.jpg",
-    projectUrl: "https://api-docs.example.com",
-    githubUrl: "https://github.com/example/api-docs",
-    technologies: ["GitBook", "OpenAPI", "Markdown", "JavaScript", "React"],
-  },
-  {
-    title: "Security Vulnerability Assessment",
-    description: "Complete security assessment of a e-commerce platform identifying critical vulnerabilities.",
-    category: "cybersecurity",
-    featured: true,
-    image: "/cybersecurity-vulnerability-assessment-dashboard.jpg",
-    projectUrl: null,
-    githubUrl: null,
-    technologies: ["OWASP", "Burp Suite", "Nmap", "Python", "Security Testing"],
-  },
-  {
-    title: "Developer Onboarding Guide",
-    description: "Interactive developer onboarding documentation with step-by-step tutorials and code examples.",
-    category: "technical-writing",
-    featured: false,
-    image: "/developer-onboarding-guide-interface.jpg",
-    projectUrl: "https://docs.example.com/onboarding",
-    githubUrl: null,
-    technologies: ["Notion", "Markdown", "Figma", "Technical Writing"],
-  },
-  {
-    title: "Network Security Implementation",
-    description: "Implementation of enterprise-grade network security solutions for a mid-size company.",
-    category: "cybersecurity",
-    featured: false,
-    image: "/network-security-dashboard.png",
-    projectUrl: null,
-    githubUrl: null,
-    technologies: ["pfSense", "Suricata", "ELK Stack", "Network Security", "Monitoring"],
-  },
-]
+interface Project {
+  title: string
+  description: string
+  technologies: string[]
+  category: string
+  github_url: string | null
+  live_url: string | null
+  image_url: string
+  featured: boolean
+}
 
-export function ProjectsSection() {
+interface ProjectsSectionProps {
+  projects: Project[]
+}
+
+export function ProjectsSection({ projects }: ProjectsSectionProps) {
   const [filter, setFilter] = useState<"all" | "technical-writing" | "cybersecurity">("all")
 
   const filteredProjects = projects.filter((project) => filter === "all" || project.category === filter)
@@ -96,7 +67,7 @@ export function ProjectsSection() {
               {/* Image */}
               <div className="relative aspect-video overflow-hidden">
                 <Image
-                  src={project.image || "/placeholder.svg"}
+                  src={project.image_url || "/placeholder.svg"}
                   alt={project.title}
                   fill
                   className="object-cover rounded-md"
@@ -113,16 +84,16 @@ export function ProjectsSection() {
                     {project.category.replace("-", " ")}
                   </Badge>
                   <div className="flex gap-2">
-                    {project.projectUrl && (
+                    {project.live_url && (
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={project.projectUrl} target="_blank" rel="noopener noreferrer">
+                        <Link href={project.live_url} target="_blank" rel="noopener noreferrer">
                           <ExternalLink className="h-4 w-4" />
                         </Link>
                       </Button>
                     )}
-                    {project.githubUrl && (
+                    {project.github_url && (
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={project.githubUrl} target="_blank" rel="noopener noreferrer">
+                        <Link href={project.github_url} target="_blank" rel="noopener noreferrer">
                           <Github className="h-4 w-4" />
                         </Link>
                       </Button>
