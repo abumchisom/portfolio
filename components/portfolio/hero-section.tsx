@@ -15,7 +15,7 @@ interface HeroSectionProps {
     github?: string
     linkedin?: string
     email?: string
-    photoUrl?: string // Add photo URL to props
+    profile_image?: string
   } | null
 }
 
@@ -139,14 +139,14 @@ export function HeroSection({ portfolio }: HeroSectionProps) {
           {/* Right Column - Photo */}
           <div className="order-1 lg:order-2 flex justify-center lg:justify-end items-center">
             <div className="relative w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 lg:w-96 lg:h-96">
-                <Image
-                  src="/photo.jpg"
-                  alt={"Profile photo"}
-                  fill
-                  className="rounded-full object-cover border-4 border-primary/20 shadow-2xl shadow-primary/20 animate-fade-in"
-                  sizes="(max-width: 640px) 192px, (max-width: 768px) 256px, (max-width: 1024px) 320px, 384px"
-                  priority
-                />
+              <Image
+                src={portfolio?.profile_image || "/photo.jpg"}
+                alt={`${portfolio?.name || "Profile"} photo`}
+                fill
+                className="rounded-full object-cover border-4 border-primary/20 shadow-2xl shadow-primary/20 animate-fade-in"
+                sizes="(max-width: 640px) 192px, (max-width: 768px) 256px, (max-width: 1024px) 320px, 384px"
+                priority
+              />
               
               {/* Optional decorative elements */}
               <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/10 rounded-full blur-xl animate-pulse" />

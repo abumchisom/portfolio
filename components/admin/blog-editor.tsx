@@ -104,7 +104,11 @@ export function BlogEditor() {
     return content.split(/\n\s*\n/).filter((p) => p.trim().length > 0).length;
   };
 
-  const handleSave = async (blogData: Partial<Blog>, publish = false, unpublish = false) => {
+  const handleSave = async (
+    blogData: Partial<Blog>,
+    publish = false,
+    unpublish = false
+  ) => {
     setIsSaving(true);
     try {
       // Generate slug if not provided
@@ -155,8 +159,8 @@ export function BlogEditor() {
 
       toast({
         title: "Success",
-        description: unpublish 
-          ? "Blog post unpublished and saved as draft successfully!" 
+        description: unpublish
+          ? "Blog post unpublished and saved as draft successfully!"
           : `Blog post ${
               publish ? "published" : "saved as draft"
             } successfully!`,
@@ -479,6 +483,9 @@ function BlogSettingsDialog({
   generateSlug: (title: string) => string;
 }) {
   const [formData, setFormData] = useState(blog);
+  const [featuredImageFile, setFeaturedImageFile] = useState<File | null>(null);
+  const supabase = createClient();
+  const { toast } = useToast();
 
   // Update formData when blog prop changes (e.g., title updated in main editor)
   useEffect(() => {
@@ -517,8 +524,14 @@ function BlogSettingsDialog({
     return generateSlug(formData.title || "");
   }, [formData.slug, formData.title, generateSlug]);
 
-  const suggestedTags = useMemo(() => getSuggestedTags(formData.content || ''), [formData.content]);
-  const suggestedCategory = useMemo(() => getSuggestedCategory(suggestedTags), [suggestedTags]);
+  const suggestedTags = useMemo(
+    () => getSuggestedTags(formData.content || ""),
+    [formData.content]
+  );
+  const suggestedCategory = useMemo(
+    () => getSuggestedCategory(suggestedTags),
+    [suggestedTags]
+  );
 
   const wordCount = formData.content ? countWords(formData.content) : 0;
   const paragraphCount = formData.content
@@ -528,12 +541,66 @@ function BlogSettingsDialog({
     ? calculateReadingTime(formData.content)
     : 0;
 
-  const finalData = useMemo(() => ({
-    ...formData,
-    slug: computedSlug,
-    category: formData.category || suggestedCategory,
-    tags: formData.tags?.length ? formData.tags : suggestedTags,
-  }), [formData, computedSlug, suggestedCategory, suggestedTags]);
+  const finalData = useMemo(
+    () => ({
+      ...formData,
+      slug: computedSlug,
+      category: formData.category || suggestedCategory,
+      tags: formData.tags?.length ? formData.tags : suggestedTags,
+    }),
+    [formData, computedSlug, suggestedCategory, suggestedTags]
+  );
+
+  const handleFeaturedImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFeaturedImageFile(file);
+      // Preview the image
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setFormData((prev) => ({
+          ...prev,
+          image_url: event.target?.result as string,
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveWithUpload = async (publish = false, unpublish = false) => {
+    try {
+      let updatedData = { ...finalData };
+      // Handle featured image upload if a new file is selected
+      if (featuredImageFile) {
+        const fileName = `private/blog-${Date.now()}-${featuredImageFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("profile-images")
+          .upload(fileName, featuredImageFile, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from("profile-images")
+          .getPublicUrl(fileName);
+
+        updatedData = { ...updatedData, image_url: urlData.publicUrl };
+      }
+
+      onSave(updatedData, publish, unpublish);
+    } catch (error) {
+      console.error("Error uploading featured image:", error);
+      toast({
+        title: "Error",
+        description: "Failed to upload featured image.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -576,14 +643,18 @@ function BlogSettingsDialog({
         {/* Form Fields */}
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="slug">URL Slug (Auto-generated)</Label>
+            <Label htmlFor="slug">URL Slug (Auto-generated from title, editable)</Label>
             <Input
               id="slug"
               value={computedSlug}
-              readOnly
-              className="bg-muted/50 cursor-not-allowed"
+              onChange={(e) =>
+                setFormData({ ...formData, slug: e.target.value })
+              }
               placeholder="auto-generated-from-title"
             />
+            <p className="text-xs text-muted-foreground">
+              Edit to customize the URL slug. Clear to regenerate from title.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -599,30 +670,46 @@ function BlogSettingsDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="image_url">Featured Image URL</Label>
+            <Label htmlFor="featured-image">Featured Image</Label>
+            <div className="flex flex-col md:flex-row gap-4 items-start">
+              <div className="flex-1">
+                <Input
+                  id="featured-image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFeaturedImageChange}
+                />
+              </div>
+              {formData.image_url && (
+                <img
+                  src={
+                    typeof formData.image_url === "string"
+                      ? formData.image_url
+                      : formData.image_url
+                  }
+                  alt="Featured image preview"
+                  className="w-24 h-24 object-cover border rounded"
+                />
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Upload a featured image (JPG, PNG). It will be stored securely in
+              Supabase Storage.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="canonical_url">Canonical URL</Label>
             <Input
-              id="image_url"
-              value={formData.image_url || ""}
+              id="canonical_url"
+              value={formData.canonical_url || ""}
               onChange={(e) =>
-                setFormData({ ...formData, image_url: e.target.value })
+                setFormData({ ...formData, canonical_url: e.target.value })
               }
-              placeholder="https://example.com/image.jpg"
+              placeholder="https://medium.com/@you/original-article"
             />
           </div>
-          <div className="space-y-2">
-  <Label htmlFor="canonical_url">Canonical URL</Label>
-  <Input
-    id="canonical_url"
-    value={formData.canonical_url || ""}
-    onChange={(e) =>
-      setFormData({ ...formData, canonical_url: e.target.value })
-    }
-    placeholder="https://medium.com/@you/original-article"
-  />
-</div>
-</div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -631,7 +718,10 @@ function BlogSettingsDialog({
                 id="category"
                 value={formData.category || ""}
                 onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value || undefined })
+                  setFormData({
+                    ...formData,
+                    category: e.target.value || undefined,
+                  })
                 }
                 placeholder="Technical Writing, Cybersecurity, etc."
               />
@@ -714,7 +804,7 @@ function BlogSettingsDialog({
                 checked={false} // Always false, as it's a toggle action
                 onCheckedChange={(checked) => {
                   if (checked) {
-                    onSave(finalData, false, true);
+                    handleSaveWithUpload(false, true);
                   }
                 }}
               />
@@ -731,12 +821,15 @@ function BlogSettingsDialog({
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => onSave(finalData, false)}
+              onClick={() => handleSaveWithUpload(false)}
               disabled={isSaving}
             >
               Save Draft
             </Button>
-            <Button onClick={() => onSave(finalData, true)} disabled={isSaving}>
+            <Button
+              onClick={() => handleSaveWithUpload(true)}
+              disabled={isSaving}
+            >
               {formData.status === "published" ? "Update" : "Publish"}
             </Button>
           </div>
@@ -764,16 +857,75 @@ function calculateReadingTime(content: string): number {
 }
 
 const stopWords = [
-  'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their'
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "but",
+  "in",
+  "on",
+  "at",
+  "to",
+  "for",
+  "of",
+  "with",
+  "by",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "will",
+  "would",
+  "could",
+  "should",
+  "may",
+  "might",
+  "can",
+  "this",
+  "that",
+  "these",
+  "those",
+  "i",
+  "you",
+  "he",
+  "she",
+  "it",
+  "we",
+  "they",
+  "me",
+  "him",
+  "her",
+  "us",
+  "them",
+  "my",
+  "your",
+  "his",
+  "its",
+  "our",
+  "their",
 ];
 
 function getSuggestedTags(content: string): string[] {
-  const text = content.replace(/<[^>]*>/g, '').toLowerCase();
-  const words = text.split(/\s+/).filter(word => word.length > 3 && !stopWords.includes(word));
-  const freq: Record<string, number> = words.reduce((acc: Record<string, number>, word) => {
-    acc[word] = (acc[word] || 0) + 1;
-    return acc;
-  }, {});
+  const text = content.replace(/<[^>]*>/g, "").toLowerCase();
+  const words = text
+    .split(/\s+/)
+    .filter((word) => word.length > 3 && !stopWords.includes(word));
+  const freq: Record<string, number> = words.reduce(
+    (acc: Record<string, number>, word) => {
+      acc[word] = (acc[word] || 0) + 1;
+      return acc;
+    },
+    {}
+  );
   return Object.entries(freq)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5)
@@ -781,5 +933,5 @@ function getSuggestedTags(content: string): string[] {
 }
 
 function getSuggestedCategory(suggestedTags: string[]): string {
-  return suggestedTags[0] || '';
+  return suggestedTags[0] || "";
 }

@@ -56,8 +56,9 @@ export function PortfolioInfoForm() {
 
     try {
       // Handle profile image upload if a new file is selected
+      let updatedProfileImage = portfolioInfo.profile_image
       if (profileImageFile) {
-        const fileName = `profile-${Date.now()}-${profileImageFile.name}`
+        const fileName = `private/profile-${Date.now()}-${profileImageFile.name}`
         const { error: uploadError } = await supabase.storage
           .from('profile-images')
           .upload(fileName, profileImageFile, {
@@ -71,25 +72,28 @@ export function PortfolioInfoForm() {
           .from('profile-images')
           .getPublicUrl(fileName)
 
-        setPortfolioInfo((prev) => ({ ...prev, profile_image: urlData.publicUrl }))
+        updatedProfileImage = urlData.publicUrl
       }
 
       const { data: existingData } = await supabase.from("portfolio_info").select("id").single()
+
+      const portfolioData = {
+        ...portfolioInfo,
+        profile_image: updatedProfileImage,
+        updated_at: new Date().toISOString(),
+      }
 
       if (existingData) {
         // Update existing record
         const { error } = await supabase
           .from("portfolio_info")
-          .update({
-            ...portfolioInfo,
-            updated_at: new Date().toISOString(),
-          })
+          .update(portfolioData)
           .eq("id", existingData.id)
 
         if (error) throw error
       } else {
         // Insert new record
-        const { error } = await supabase.from("portfolio_info").insert(portfolioInfo)
+        const { error } = await supabase.from("portfolio_info").insert(portfolioData)
         if (error) throw error
       }
 
@@ -120,6 +124,7 @@ export function PortfolioInfoForm() {
       })
     } finally {
       setIsLoading(false)
+      setProfileImageFile(null) // Reset file after successful upload
     }
   }
 
@@ -190,13 +195,13 @@ export function PortfolioInfoForm() {
                 </div>
                 {portfolioInfo.profile_image && (
                   <img
-                    src={portfolioInfo.profile_image}
+                    src={typeof portfolioInfo.profile_image === 'string' ? portfolioInfo.profile_image : portfolioInfo.profile_image}
                     alt="Profile preview"
                     className="w-24 h-24 rounded-full object-cover border"
                   />
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">Upload a profile image (JPG, PNG). It will be stored securely in Supabase Storage.</p>
+              <p className="text-sm text-muted-foreground">Upload a profile image (JPG, PNG). It will be stored securely in Supabase Storage. Existing images will be displayed above.</p>
             </div>
 
             <div className="space-y-2">
