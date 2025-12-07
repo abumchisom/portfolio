@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS portfolio_info (
   linkedin VARCHAR(255),
   github VARCHAR(255),
   twitter VARCHAR(255),
+  profile_image VARCHAR(255);
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

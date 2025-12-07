@@ -11,6 +11,7 @@ export interface PortfolioInfo {
   linkedin?: string
   github?: string
   twitter?: string
+  profile_image?: string
   created_at: string
   updated_at: string
 }

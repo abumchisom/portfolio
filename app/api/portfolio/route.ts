@@ -34,10 +34,10 @@ export async function PUT(request: NextRequest) {
       email,
       phone,
       location,
-      linkedin_url,
-      github_url,
-      twitter_url,
-      resume_url,
+      linkedin,
+      github,
+      twitter,
+      website,
       profile_image,
     } = await request.json()
 
@@ -59,11 +59,12 @@ export async function PUT(request: NextRequest) {
           email,
           phone,
           location,
-          linkedin_url,
-          github_url,
-          twitter_url,
-          resume_url,
+          linkedin,
+          github,
+          twitter,
+          website,
           profile_image,
+          updated_at: new Date().toISOString(),
         })
         .eq("id", existing.id)
         .select()
@@ -83,10 +84,10 @@ export async function PUT(request: NextRequest) {
             email,
             phone,
             location,
-            linkedin_url,
-            github_url,
-            twitter_url,
-            resume_url,
+            linkedin,
+            github,
+            twitter,
+            website,
             profile_image,
           },
         ])

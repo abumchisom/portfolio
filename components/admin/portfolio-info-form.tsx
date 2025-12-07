@@ -14,6 +14,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor"
 
 export function PortfolioInfoForm() {
   const [portfolioInfo, setPortfolioInfo] = useState<Partial<PortfolioInfo>>({})
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null)
   const [aboutUs, setAboutUs] = useState({ title: "", description: "" })
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingData, setIsLoadingData] = useState(true)
@@ -54,6 +55,25 @@ export function PortfolioInfoForm() {
     setIsLoading(true)
 
     try {
+      // Handle profile image upload if a new file is selected
+      if (profileImageFile) {
+        const fileName = `profile-${Date.now()}-${profileImageFile.name}`
+        const { error: uploadError } = await supabase.storage
+          .from('profile-images')
+          .upload(fileName, profileImageFile, {
+            cacheControl: '3600',
+            upsert: false
+          })
+
+        if (uploadError) throw uploadError
+
+        const { data: urlData } = supabase.storage
+          .from('profile-images')
+          .getPublicUrl(fileName)
+
+        setPortfolioInfo((prev) => ({ ...prev, profile_image: urlData.publicUrl }))
+      }
+
       const { data: existingData } = await supabase.from("portfolio_info").select("id").single()
 
       if (existingData) {
@@ -107,6 +127,19 @@ export function PortfolioInfoForm() {
     setPortfolioInfo((prev) => ({ ...prev, [field]: value }))
   }
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setProfileImageFile(file)
+      // Preview the image
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setPortfolioInfo((prev) => ({ ...prev, profile_image: event.target?.result as string }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   if (isLoadingData) {
     return <div>Loading...</div>
   }
@@ -141,6 +174,29 @@ export function PortfolioInfoForm() {
                   required
                 />
               </div>
+            </div>
+
+            {/* Profile Image Upload */}
+            <div className="space-y-2">
+              <Label htmlFor="profile-image">Profile Image</Label>
+              <div className="flex flex-col md:flex-row gap-4 items-start">
+                <div className="flex-1">
+                  <Input
+                    id="profile-image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                  />
+                </div>
+                {portfolioInfo.profile_image && (
+                  <img
+                    src={portfolioInfo.profile_image}
+                    alt="Profile preview"
+                    className="w-24 h-24 rounded-full object-cover border"
+                  />
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">Upload a profile image (JPG, PNG). It will be stored securely in Supabase Storage.</p>
             </div>
 
             <div className="space-y-2">
