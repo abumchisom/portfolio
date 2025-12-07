@@ -13,6 +13,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
@@ -26,6 +32,8 @@ import {
   FileText,
   Settings,
   Trash2,
+  EyeOff,
+  MoreHorizontal,
 } from "lucide-react";
 import type { Blog } from "@/lib/types";
 
@@ -96,7 +104,7 @@ export function BlogEditor() {
     return content.split(/\n\s*\n/).filter((p) => p.trim().length > 0).length;
   };
 
-  const handleSave = async (blogData: Partial<Blog>, publish = false) => {
+  const handleSave = async (blogData: Partial<Blog>, publish = false, unpublish = false) => {
     setIsSaving(true);
     try {
       // Generate slug if not provided
@@ -105,7 +113,10 @@ export function BlogEditor() {
       }
 
       // Set status
-      if (publish) {
+      if (unpublish) {
+        blogData.status = "draft";
+        delete blogData.published_at; // Clear published_at when unpublishing
+      } else if (publish) {
         blogData.status = "published";
         blogData.published_at = new Date().toISOString();
       } else {
@@ -114,12 +125,19 @@ export function BlogEditor() {
 
       if (selectedBlog?.id) {
         // Update existing blog
+        const updateData = {
+          ...blogData,
+          updated_at: new Date().toISOString(),
+        };
+
+        // Ensure we don't overwrite published_at unless publishing
+        if (unpublish) {
+          updateData.published_at = undefined;
+        }
+
         const { error } = await supabase
           .from("blogs")
-          .update({
-            ...blogData,
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq("id", selectedBlog.id);
 
         if (error) throw error;
@@ -137,9 +155,11 @@ export function BlogEditor() {
 
       toast({
         title: "Success",
-        description: `Blog post ${
-          publish ? "published" : "saved as draft"
-        } successfully!`,
+        description: unpublish 
+          ? "Blog post unpublished and saved as draft successfully!" 
+          : `Blog post ${
+              publish ? "published" : "saved as draft"
+            } successfully!`,
       });
 
       loadBlogs();
@@ -219,7 +239,7 @@ export function BlogEditor() {
             {draftBlogs.map((blog) => (
               <div
                 key={blog.id}
-                className={`p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
+                className={`group p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
                   selectedBlog?.id === blog.id
                     ? "bg-muted border-primary"
                     : "bg-card"
@@ -230,17 +250,29 @@ export function BlogEditor() {
                   <h4 className="font-medium text-sm line-clamp-1">
                     {blog.title || "Untitled"}
                   </h4>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(blog.id);
-                    }}
-                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                      >
+                        <MoreHorizontal className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(blog.id);
+                        }}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-2">
                   {blog.excerpt || "No excerpt"}
@@ -276,7 +308,7 @@ export function BlogEditor() {
             {publishedBlogs.map((blog) => (
               <div
                 key={blog.id}
-                className={`p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
+                className={`group p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
                   selectedBlog?.id === blog.id
                     ? "bg-muted border-primary"
                     : "bg-card"
@@ -287,7 +319,38 @@ export function BlogEditor() {
                   <h4 className="font-medium text-sm line-clamp-1">
                     {blog.title}
                   </h4>
-                  <Badge className="text-xs">Published</Badge>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
+                      >
+                        <MoreHorizontal className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSave(blog, false, true);
+                        }}
+                      >
+                        <EyeOff className="h-4 w-4 mr-2" />
+                        Unpublish
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(blog.id);
+                        }}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-2">
                   {blog.excerpt}
@@ -298,11 +361,14 @@ export function BlogEditor() {
                       ? new Date(blog.published_at).toLocaleDateString()
                       : ""}
                   </span>
-                  {blog.featured && (
-                    <Badge variant="secondary" className="text-xs">
-                      Featured
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Badge className="text-xs">Published</Badge>
+                    {blog.featured && (
+                      <Badge variant="secondary" className="text-xs">
+                        Featured
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -407,7 +473,7 @@ function BlogSettingsDialog({
   generateSlug,
 }: {
   blog: Partial<Blog>;
-  onSave: (blog: Partial<Blog>, publish?: boolean) => void;
+  onSave: (blog: Partial<Blog>, publish?: boolean, unpublish?: boolean) => void;
   onClose: () => void;
   isSaving: boolean;
   generateSlug: (title: string) => string;
@@ -639,6 +705,22 @@ function BlogSettingsDialog({
             />
             <Label htmlFor="featured">Featured Post</Label>
           </div>
+
+          {/* Unpublish Switch for Published Posts */}
+          {formData.status === "published" && (
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="unpublish"
+                checked={false} // Always false, as it's a toggle action
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    onSave(finalData, false, true);
+                  }
+                }}
+              />
+              <Label htmlFor="unpublish">Unpublish (Make Draft)</Label>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}

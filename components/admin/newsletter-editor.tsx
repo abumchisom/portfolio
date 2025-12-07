@@ -10,22 +10,25 @@ import { createBrowserClient } from "@/lib/supabase/client";
 import type { Newsletter } from "@/lib/types";
 import { Save, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface NewsletterEditorProps {
   newsletter?: Newsletter | null;
   onSave: (newsletter: Newsletter) => void;
   onCancel: () => void;
+  onPreview: (newsletter: Newsletter) => void;
 }
 
 export function NewsletterEditor({
   newsletter,
   onSave,
   onCancel,
+  onPreview,
 }: NewsletterEditorProps) {
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [content, setContent] = useState("");
-  const [previewMode, setPreviewMode] = useState(false);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const supabase = createBrowserClient();
@@ -34,7 +37,18 @@ export function NewsletterEditor({
     if (newsletter) {
       setTitle(newsletter.title);
       setSubject(newsletter.subject);
-      setContent(newsletter.content);
+      setContent(
+        newsletter.content
+          ? newsletter.content
+              .replace(/<[^>]*>/g, "")
+              .replace(/\n/g, "")
+              .trim()
+          : ""
+      );
+    } else {
+      setTitle("");
+      setSubject("");
+      setContent("");
     }
   }, [newsletter]);
 
@@ -198,25 +212,42 @@ export function NewsletterEditor({
     }
   };
 
+  const handlePreview = () => {
+    if (!title.trim() || !subject.trim() || !content.trim()) {
+      toast.error("Please fill in all required fields before previewing");
+      return;
+    }
+    const htmlContent = generateEmailTemplate(content);
+    const tempNewsletter: Newsletter = {
+      id: newsletter?.id ?? '',
+      title,
+      subject,
+      content: htmlContent,
+      status: "draft",
+      recipient_count: newsletter?.recipient_count ?? 0,
+      open_count: newsletter?.open_count ?? 0,
+      click_count: newsletter?.click_count ?? 0,
+      created_at: "",
+      updated_at: ""
+    };
+    onPreview(tempNewsletter);
+    setShowPreviewDialog(true);
+  };
+
   return (
     <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">
+          {newsletter ? "Edit Newsletter" : "New Newsletter"}
+        </h2>
+        <Button variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
         {/* Editor Panel */}
-        <div className="space-y-4 ">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Newsletter Editor</h3>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPreviewMode(!previewMode)}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                {previewMode ? "Edit" : "Preview"}
-              </Button>
-            </div>
-          </div>
-
+        <div className="space-y-4">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="title">Newsletter Title</Label>
@@ -258,44 +289,47 @@ export function NewsletterEditor({
             </div>
           </div>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-2">
+            <Button onClick={handlePreview} variant="outline">
+              <Eye className="h-4 w-4 mr-2" />
+              Preview
+            </Button>
             <Button onClick={handleSave} disabled={isSaving}>
               <Save className="h-4 w-4 mr-2" />
               {isSaving ? "Saving..." : "Save Draft"}
             </Button>
-            <Button variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
           </div>
         </div>
 
-        {/* Live Preview Panel */}
+        {/* Live Input Preview (optional, but keeping simple as per request) */}
         <div className="border-l pl-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Live Preview</h3>
-            <div className="text-sm text-muted-foreground">
-              Email Template Preview
+          <h3 className="text-lg font-semibold mb-4">Content Preview</h3>
+          <div className="bg-muted p-4 rounded-lg h-64 overflow-y-auto">
+            <div className="prose prose-sm">
+              {content
+                .split("\n")
+                .filter((p) => p.trim())
+                .map((paragraph, index) => (
+                  <p key={index} className="mb-2">{paragraph}</p>
+                ))}
             </div>
           </div>
-
-          <Card className="h-full overflow-hidden">
-            <CardContent className="p-0 h-full">
-              <div className="h-full overflow-y-auto">
-                <div
-                  className="prose prose-sm max-w-none p-6"
-                  dangerouslySetInnerHTML={{
-                    __html: generateEmailTemplate(
-                      content || "Your newsletter content will appear here..."
-                    )
-                    .replace(/<!DOCTYPE[\s\S]*?<body.*?>/, "") // strip head/body start
-      .replace(/<\/body>\s*<\/html>/, ""),
-                  }}
-                />
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
+
+      {/* Preview Dialog */}
+      {/* <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Newsletter Design Preview</DialogTitle>
+          </DialogHeader>
+          <div className="h-full overflow-auto p-4">
+            <div
+              dangerouslySetInnerHTML={{ __html: generateEmailTemplate(content) }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog> */}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { Search, Download, UserX } from "lucide-react"
+import { Search, Download, UserX, RefreshCw } from "lucide-react"
 import type { NewsletterSubscriber } from "@/lib/types"
 
 export function SubscribersManager() {
@@ -77,6 +77,36 @@ export function SubscribersManager() {
       toast({
         title: "Error",
         description: "Failed to unsubscribe user.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleResubscribe = async (id: string) => {
+    if (!confirm("Are you sure you want to resubscribe this user?")) return
+
+    try {
+      const { error } = await supabase
+        .from("newsletter_subscribers")
+        .update({
+          status: "active",
+          unsubscribed_at: null,
+        })
+        .eq("id", id)
+
+      if (error) throw error
+
+      toast({
+        title: "Success",
+        description: "Subscriber resubscribed successfully!",
+      })
+
+      loadSubscribers()
+    } catch (error) {
+      console.error("Error resubscribing:", error)
+      toast({
+        title: "Error",
+        description: "Failed to resubscribe user.",
         variant: "destructive",
       })
     }
@@ -178,10 +208,15 @@ export function SubscribersManager() {
                     )}
                   </p>
                 </div>
-                {subscriber.status === "active" && (
+                {subscriber.status === "active" ? (
                   <Button variant="outline" size="sm" onClick={() => handleUnsubscribe(subscriber.id)}>
                     <UserX className="h-4 w-4 mr-2" />
                     Unsubscribe
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => handleResubscribe(subscriber.id)}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Resubscribe
                   </Button>
                 )}
               </div>
