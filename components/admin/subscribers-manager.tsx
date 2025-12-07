@@ -4,10 +4,12 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { Search, Download, UserX, RefreshCw } from "lucide-react"
+import { Search, Download, UserX, RefreshCw, UserPlus } from "lucide-react"
 import type { NewsletterSubscriber } from "@/lib/types"
 
 export function SubscribersManager() {
@@ -15,6 +17,13 @@ export function SubscribersManager() {
   const [filteredSubscribers, setFilteredSubscribers] = useState<NewsletterSubscriber[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+
+  // New states for subscriber dialog
+  const [showSubscriberDialog, setShowSubscriberDialog] = useState(false)
+  const [subscriberEmail, setSubscriberEmail] = useState("")
+  const [subscriberName, setSubscriberName] = useState("")
+  const [subscribing, setSubscribing] = useState(false)
+
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -49,6 +58,53 @@ export function SubscribersManager() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // New handler for adding subscriber
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!subscriberEmail.trim()) {
+      toast({
+        title: "Error",
+        description: "Email is required",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSubscribing(true)
+    try {
+      const response = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: subscriberEmail.trim(),
+          name: subscriberName.trim() || undefined,
+        }),
+      })
+
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || "Failed to subscribe")
+
+      toast({
+        title: "Success",
+        description: "Successfully subscribed!",
+      })
+
+      setSubscriberEmail("")
+      setSubscriberName("")
+      setShowSubscriberDialog(false)
+      loadSubscribers()
+    } catch (error) {
+      console.error("Error subscribing:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to subscribe",
+        variant: "destructive",
+      })
+    } finally {
+      setSubscribing(false)
     }
   }
 
@@ -167,6 +223,10 @@ export function SubscribersManager() {
       </div>
 
       <div className="flex justify-between items-center gap-4">
+        <Button onClick={() => setShowSubscriberDialog(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Add Subscriber
+        </Button>
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -232,6 +292,49 @@ export function SubscribersManager() {
           </div>
         </CardContent>
       </Card>
+
+      {/* New Subscriber Dialog */}
+      <Dialog open={showSubscriberDialog} onOpenChange={setShowSubscriberDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Subscriber</DialogTitle>
+            <DialogDescription>Enter the email and optional name for the new subscriber.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubscribe}>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter subscriber email"
+                  value={subscriberEmail}
+                  onChange={(e) => setSubscriberEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="name">Name (Optional)</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Enter subscriber name"
+                  value={subscriberName}
+                  onChange={(e) => setSubscriberName(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter className="mt-6">
+              <Button type="button" variant="outline" onClick={() => setShowSubscriberDialog(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={subscribing}>
+                {subscribing ? "Subscribing..." : "Subscribe"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -3,10 +3,12 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { createBrowserClient } from "@/lib/supabase/client";
 import type { Newsletter } from "@/lib/types";
-import { Plus, Edit, Send, Trash2 } from "lucide-react";
+import { Plus, Edit, Send, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useSubscribers } from "@/hooks/use-subscribers";
 import { NewsletterEditor } from "./newsletter-editor";
@@ -19,7 +21,13 @@ export function NewsletterManager() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewNewsletter, setPreviewNewsletter] = useState<Newsletter | null>(null);
 
-  const { activeSubscribers, totalCount: subscriberCount, isLoading: subscribersLoading } = useSubscribers();
+  // New states for subscriber dialog
+  const [showSubscriberDialog, setShowSubscriberDialog] = useState(false);
+  const [subscriberEmail, setSubscriberEmail] = useState("");
+  const [subscriberName, setSubscriberName] = useState("");
+  const [subscribing, setSubscribing] = useState(false);
+
+  const { activeSubscribers, totalCount: subscriberCount, isLoading: subscribersLoading, refetch: refetchSubscribers } = useSubscribers();
 
   const supabase = createBrowserClient();
 
@@ -100,7 +108,7 @@ export function NewsletterManager() {
       if (!response.ok) throw new Error(result.error || "Failed to resend");
 
       toast.success(result.message);
-      fetchNewsletters(); // Refresh to update sent_at or status
+      fetchNewsletters(); 
     } catch (error) {
       console.error("Error resending newsletter:", error);
       toast.error("Failed to resend newsletter");
@@ -112,6 +120,44 @@ export function NewsletterManager() {
     setShowPreview(true);
   };
 
+  // New handler for subscribing
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subscriberEmail.trim()) {
+      toast.error("Email is required");
+      return;
+    }
+
+    setSubscribing(true);
+    try {
+      const response = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: subscriberEmail.trim(),
+          name: subscriberName.trim() || undefined,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to subscribe");
+
+      toast.success("Successfully subscribed!");
+      setSubscriberEmail("");
+      setSubscriberName("");
+      setShowSubscriberDialog(false);
+      // Refetch subscribers to update count
+      if (refetchSubscribers) {
+        refetchSubscribers();
+      }
+    } catch (error) {
+      console.error("Error subscribing:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to subscribe");
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
   if (loading || subscribersLoading) {
     return <div>Loading...</div>;
   }
@@ -121,8 +167,8 @@ export function NewsletterManager() {
 
   return (
     <div className="space-y-6">
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Stats - Added Subscriber Count Card */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Total Newsletters</CardTitle>
@@ -147,6 +193,14 @@ export function NewsletterManager() {
             <div className="text-2xl font-bold text-green-600">{sentCount}</div>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium">Active Subscribers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{subscriberCount}</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* List View */}
@@ -154,10 +208,16 @@ export function NewsletterManager() {
         <>
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">Newsletters</h1>
-            <Button onClick={handleNew}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Newsletter
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setShowSubscriberDialog(true)}>
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add Subscriber
+              </Button>
+              <Button onClick={handleNew}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Newsletter
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -255,6 +315,48 @@ export function NewsletterManager() {
               />
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* New Subscriber Dialog */}
+      <Dialog open={showSubscriberDialog} onOpenChange={setShowSubscriberDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Subscriber</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubscribe}>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter subscriber email"
+                  value={subscriberEmail}
+                  onChange={(e) => setSubscriberEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="name">Name (Optional)</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Enter subscriber name"
+                  value={subscriberName}
+                  onChange={(e) => setSubscriberName(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter className="mt-6">
+              <Button type="button" variant="outline" onClick={() => setShowSubscriberDialog(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={subscribing}>
+                {subscribing ? "Subscribing..." : "Subscribe"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
