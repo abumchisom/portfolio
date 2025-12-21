@@ -1,12 +1,10 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import type { PortfolioInfo } from "@/lib/types"
@@ -28,23 +26,13 @@ export function PortfolioInfoForm() {
   const loadPortfolioInfo = async () => {
     try {
       const { data, error } = await supabase.from("portfolio_info").select("*").single()
+      if (error && error.code !== "PGRST116") throw error
+      if (data) setPortfolioInfo(data)
 
-      if (error && error.code !== "PGRST116") {
-        console.error("Error loading portfolio info:", error)
-        return
-      }
-
-      if (data) {
-        setPortfolioInfo(data)
-      }
-
-      // Load about us info
       const { data: aboutData } = await supabase.from("about_us").select("*").single()
-      if (aboutData) {
-        setAboutUs(aboutData)
-      }
+      if (aboutData) setAboutUs(aboutData)
     } catch (error) {
-      console.error("Error loading portfolio info:", error)
+      console.error("Error loading data:", error)
     } finally {
       setIsLoadingData(false)
     }
@@ -55,27 +43,20 @@ export function PortfolioInfoForm() {
     setIsLoading(true)
 
     try {
-      // Handle profile image upload if a new file is selected
       let updatedProfileImage = portfolioInfo.profile_image
       if (profileImageFile) {
         const fileName = `private/profile-${Date.now()}-${profileImageFile.name}`
         const { error: uploadError } = await supabase.storage
-          .from('profile-images')
-          .upload(fileName, profileImageFile, {
-            cacheControl: '3600',
-            upsert: false
-          })
+          .from("profile-images")
+          .upload(fileName, profileImageFile, { upsert: false })
 
         if (uploadError) throw uploadError
 
-        const { data: urlData } = supabase.storage
-          .from('profile-images')
-          .getPublicUrl(fileName)
-
+        const { data: urlData } = supabase.storage.from("profile-images").getPublicUrl(fileName)
         updatedProfileImage = urlData.publicUrl
       }
 
-      const { data: existingData } = await supabase.from("portfolio_info").select("id").single()
+      const { data: existing } = await supabase.from("portfolio_info").select("id").single()
 
       const portfolioData = {
         ...portfolioInfo,
@@ -83,216 +64,175 @@ export function PortfolioInfoForm() {
         updated_at: new Date().toISOString(),
       }
 
-      if (existingData) {
-        // Update existing record
-        const { error } = await supabase
-          .from("portfolio_info")
-          .update(portfolioData)
-          .eq("id", existingData.id)
-
-        if (error) throw error
+      if (existing) {
+        await supabase.from("portfolio_info").update(portfolioData).eq("id", existing.id)
       } else {
-        // Insert new record
-        const { error } = await supabase.from("portfolio_info").insert(portfolioData)
-        if (error) throw error
+        await supabase.from("portfolio_info").insert(portfolioData)
       }
 
-      // Save about us info
+      // Save about us
       const { data: existingAbout } = await supabase.from("about_us").select("id").single()
       if (existingAbout) {
-        await supabase
-          .from("about_us")
-          .update({
-            ...aboutUs,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existingAbout.id)
+        await supabase.from("about_us").update({ ...aboutUs, updated_at: new Date().toISOString() }).eq("id", existingAbout.id)
       } else {
         await supabase.from("about_us").insert(aboutUs)
       }
 
-      toast({
-        title: "Success",
-        description: "Portfolio information updated successfully!",
-      })
+      toast({ title: "Success", description: "Portfolio information saved!" })
     } catch (error) {
-      console.error("Error saving portfolio info:", error)
-      toast({
-        title: "Error",
-        description: "Failed to save portfolio information.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" })
     } finally {
       setIsLoading(false)
-      setProfileImageFile(null) // Reset file after successful upload
+      setProfileImageFile(null)
     }
-  }
-
-  const handleInputChange = (field: keyof PortfolioInfo, value: string) => {
-    setPortfolioInfo((prev) => ({ ...prev, [field]: value }))
   }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       setProfileImageFile(file)
-      // Preview the image
       const reader = new FileReader()
-      reader.onload = (event) => {
-        setPortfolioInfo((prev) => ({ ...prev, profile_image: event.target?.result as string }))
-      }
+      reader.onload = (ev) => setPortfolioInfo((p) => ({ ...p, profile_image: ev.target?.result as string }))
       reader.readAsDataURL(file)
     }
   }
 
   if (isLoadingData) {
-    return <div>Loading...</div>
+    return <div className="text-center py-12 text-muted-foreground">Loading...</div>
   }
 
   return (
-    <div className="space-y-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-          <CardDescription>Update your personal details and contact information.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+    <div className="min-h-screen bg-background">
+      <div className="border-b border-border">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <h1 className="text-2xl font-semibold">Portfolio Settings</h1>
+          <p className="text-sm text-muted-foreground mt-1">Update your personal and about section information</p>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-8 space-y-10">
+        {/* Personal Information */}
+        <div className="border border-border rounded-lg">
+          <div className="p-6 border-b border-border">
+            <h2 className="font-medium text-lg">Personal Information</h2>
+            <p className="text-sm text-muted-foreground mt-1">Update your personal details and contact info</p>
+          </div>
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
                 <Label htmlFor="name">Full Name</Label>
                 <Input
                   id="name"
                   value={portfolioInfo.name || ""}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="Your full name"
+                  onChange={(e) => setPortfolioInfo((p) => ({ ...p, name: e.target.value }))}
                   required
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="title">Professional Title</Label>
                 <Input
                   id="title"
                   value={portfolioInfo.title || ""}
-                  onChange={(e) => handleInputChange("title", e.target.value)}
-                  placeholder="e.g., Technical Writer & Cybersecurity Specialist"
+                  onChange={(e) => setPortfolioInfo((p) => ({ ...p, title: e.target.value }))}
                   required
                 />
               </div>
             </div>
 
-            {/* Profile Image Upload */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="profile-image">Profile Image</Label>
-              <div className="flex flex-col md:flex-row gap-4 items-start">
-                <div className="flex-1">
-                  <Input
-                    id="profile-image"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                  />
-                </div>
+              <div className="flex flex-col md:flex-row gap-5 items-start">
+                <Input id="profile-image" type="file" accept="image/*" onChange={handleImageChange} />
                 {portfolioInfo.profile_image && (
                   <img
-                    src={typeof portfolioInfo.profile_image === 'string' ? portfolioInfo.profile_image : portfolioInfo.profile_image}
-                    alt="Profile preview"
-                    className="w-24 h-24 rounded-full object-cover border"
+                    src={portfolioInfo.profile_image as string}
+                    alt="Preview"
+                    className="w-28 h-28 rounded-full object-cover border border-border"
                   />
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">Upload a profile image (JPG, PNG). It will be stored securely in Supabase Storage. Existing images will be displayed above.</p>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="tagline">Tagline</Label>
               <Input
                 id="tagline"
                 value={portfolioInfo.tagline || ""}
-                onChange={(e) => handleInputChange("tagline", e.target.value)}
-                placeholder="A brief tagline about what you do"
+                onChange={(e) => setPortfolioInfo((p) => ({ ...p, tagline: e.target.value }))}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="bio">Bio</Label>
+            <div className="space-y-1.5">
+              <Label>Bio</Label>
               <RichTextEditor
                 value={portfolioInfo.bio || ""}
-                onChange={(value) => handleInputChange("bio", value)}
-                placeholder="Tell your story..."
+                onChange={(v) => setPortfolioInfo((p) => ({ ...p, bio: v }))}
                 showImageUpload={false}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
                 <Label htmlFor="location">Location</Label>
                 <Input
                   id="location"
                   value={portfolioInfo.location || ""}
-                  onChange={(e) => handleInputChange("location", e.target.value)}
-                  placeholder="City, State/Country"
+                  onChange={(e) => setPortfolioInfo((p) => ({ ...p, location: e.target.value }))}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={portfolioInfo.email || ""}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  placeholder="your@email.com"
+                  onChange={(e) => setPortfolioInfo((p) => ({ ...p, email: e.target.value }))}
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
                 <Label htmlFor="phone">Phone</Label>
                 <Input
                   id="phone"
                   value={portfolioInfo.phone || ""}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  placeholder="+1 (555) 123-4567"
+                  onChange={(e) => setPortfolioInfo((p) => ({ ...p, phone: e.target.value }))}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="website">Website</Label>
                 <Input
                   id="website"
                   value={portfolioInfo.website || ""}
-                  onChange={(e) => handleInputChange("website", e.target.value)}
-                  placeholder="https://yourwebsite.com"
+                  onChange={(e) => setPortfolioInfo((p) => ({ ...p, website: e.target.value }))}
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="space-y-1.5">
                 <Label htmlFor="linkedin">LinkedIn</Label>
                 <Input
                   id="linkedin"
                   value={portfolioInfo.linkedin || ""}
-                  onChange={(e) => handleInputChange("linkedin", e.target.value)}
-                  placeholder="https://linkedin.com/in/username"
+                  onChange={(e) => setPortfolioInfo((p) => ({ ...p, linkedin: e.target.value }))}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="github">GitHub</Label>
                 <Input
                   id="github"
                   value={portfolioInfo.github || ""}
-                  onChange={(e) => handleInputChange("github", e.target.value)}
-                  placeholder="https://github.com/username"
+                  onChange={(e) => setPortfolioInfo((p) => ({ ...p, github: e.target.value }))}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="twitter">Twitter</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="twitter">Twitter / X</Label>
                 <Input
                   id="twitter"
                   value={portfolioInfo.twitter || ""}
-                  onChange={(e) => handleInputChange("twitter", e.target.value)}
-                  placeholder="https://twitter.com/username"
+                  onChange={(e) => setPortfolioInfo((p) => ({ ...p, twitter: e.target.value }))}
                 />
               </div>
             </div>
@@ -301,82 +241,56 @@ export function PortfolioInfoForm() {
               {isLoading ? "Saving..." : "Save Changes"}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>About Us Section</CardTitle>
-          <CardDescription>
-            Configure the about us section for your portfolio.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        {/* About Us Section */}
+        <div className="border border-border rounded-lg">
+          <div className="p-6 border-b border-border">
+            <h2 className="font-medium text-lg">About Us Section</h2>
+            <p className="text-sm text-muted-foreground mt-1">Content for the about section on your portfolio</p>
+          </div>
           <form
             onSubmit={async (e) => {
               e.preventDefault()
               setIsLoading(true)
               try {
-                const { data: existingAbout } = await supabase
-                  .from("about_us")
-                  .select("id")
-                  .single()
-
-                if (existingAbout) {
-                  await supabase
-                    .from("about_us")
-                    .update({
-                      ...aboutUs,
-                      updated_at: new Date().toISOString(),
-                    })
-                    .eq("id", existingAbout.id)
+                const { data: existing } = await supabase.from("about_us").select("id").single()
+                if (existing) {
+                  await supabase.from("about_us").update({ ...aboutUs, updated_at: new Date().toISOString() }).eq("id", existing.id)
                 } else {
                   await supabase.from("about_us").insert(aboutUs)
                 }
-
-                toast({
-                  title: "Success",
-                  description: "About Us section updated successfully.",
-                })
-              } catch (error) {
-                console.error("Error saving about us info:", error)
-                toast({
-                  title: "Error",
-                  description: "Failed to save about us section.",
-                  variant: "destructive",
-                })
+                toast({ title: "Success", description: "About section saved!" })
+              } catch {
+                toast({ title: "Error", description: "Failed to save about section.", variant: "destructive" })
               } finally {
                 setIsLoading(false)
               }
             }}
-            className="space-y-4"
+            className="p-6 space-y-6"
           >
-            <div className="space-y-2">
-              <Label htmlFor="about-title">About Us Title</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="about-title">Title</Label>
               <Input
                 id="about-title"
-                value={aboutUs.title || ""}
-                onChange={(e) => setAboutUs({ ...aboutUs, title: e.target.value })}
-                placeholder="About Our Services"
+                value={aboutUs.title}
+                onChange={(e) => setAboutUs((p) => ({ ...p, title: e.target.value }))}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="about-description">About Us Description</Label>
+            <div className="space-y-1.5">
+              <Label>Description</Label>
               <RichTextEditor
-                value={aboutUs.description || ""}
-                onChange={(value) => setAboutUs({ ...aboutUs, description: value })}
-                placeholder="Describe your services and expertise..."
+                value={aboutUs.description}
+                onChange={(v) => setAboutUs((p) => ({ ...p, description: v }))}
                 showImageUpload={false}
               />
             </div>
-
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Saving..." : "Save Changes"}
+              {isLoading ? "Saving..." : "Save About Section"}
             </Button>
           </form>
-        </CardContent>
-      </Card>
-
+        </div>
+      </div>
     </div>
   )
 }

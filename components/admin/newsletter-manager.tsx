@@ -1,134 +1,132 @@
-"use client";
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { createBrowserClient } from "@/lib/supabase/client";
-import type { Newsletter } from "@/lib/types";
-import { Plus, Edit, Send, Trash2, UserPlus } from "lucide-react";
-import { toast } from "sonner";
-import { useSubscribers } from "@/hooks/use-subscribers";
-import { NewsletterEditor } from "./newsletter-editor";
+"use client"
+import { useState, useEffect } from "react"
+import type React from "react"
+
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { createBrowserClient } from "@/lib/supabase/client"
+import type { Newsletter } from "@/lib/types"
+import { Plus, Edit, Send, Trash2, UserPlus } from "lucide-react"
+import { toast } from "sonner"
+import { useSubscribers } from "@/hooks/use-subscribers"
+import { NewsletterEditor } from "./newsletter-editor"
 
 export function NewsletterManager() {
-  const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedNewsletter, setSelectedNewsletter] = useState<Newsletter | null>(null);
-  const [currentView, setCurrentView] = useState<"list" | "editor">("list");
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewNewsletter, setPreviewNewsletter] = useState<Newsletter | null>(null);
+  const [newsletters, setNewsletters] = useState<Newsletter[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedNewsletter, setSelectedNewsletter] = useState<Newsletter | null>(null)
+  const [currentView, setCurrentView] = useState<"list" | "editor">("list")
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewNewsletter, setPreviewNewsletter] = useState<Newsletter | null>(null)
+  const [showSubscriberDialog, setShowSubscriberDialog] = useState(false)
+  const [subscriberEmail, setSubscriberEmail] = useState("")
+  const [subscriberName, setSubscriberName] = useState("")
+  const [subscribing, setSubscribing] = useState(false)
 
-  // New states for subscriber dialog
-  const [showSubscriberDialog, setShowSubscriberDialog] = useState(false);
-  const [subscriberEmail, setSubscriberEmail] = useState("");
-  const [subscriberName, setSubscriberName] = useState("");
-  const [subscribing, setSubscribing] = useState(false);
+  const {
+    activeSubscribers,
+    totalCount: subscriberCount,
+    isLoading: subscribersLoading,
+    refetch: refetchSubscribers,
+  } = useSubscribers()
 
-  const { activeSubscribers, totalCount: subscriberCount, isLoading: subscribersLoading, refetch: refetchSubscribers } = useSubscribers();
-
-  const supabase = createBrowserClient();
+  const supabase = createBrowserClient()
 
   useEffect(() => {
-    fetchNewsletters();
-  }, []);
+    fetchNewsletters()
+  }, [])
 
   const fetchNewsletters = async () => {
     try {
-      const { data, error } = await supabase
-        .from("newsletters")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("newsletters").select("*").order("created_at", { ascending: false })
 
-      if (error) throw error;
-      setNewsletters(data || []);
+      if (error) throw error
+      setNewsletters(data || [])
     } catch (error) {
-      console.error("Error fetching newsletters:", error);
-      toast.error("Failed to load newsletters");
+      console.error("Error fetching newsletters:", error)
+      toast.error("Failed to load newsletters")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleEdit = (newsletter: Newsletter) => {
-    setSelectedNewsletter(newsletter);
-    setCurrentView("editor");
-  };
+    setSelectedNewsletter(newsletter)
+    setCurrentView("editor")
+  }
 
   const handleNew = () => {
-    setSelectedNewsletter(null);
-    setCurrentView("editor");
-  };
+    setSelectedNewsletter(null)
+    setCurrentView("editor")
+  }
 
   const handleSave = (newsletter: Newsletter) => {
-    setNewsletters((prev) =>
-      prev.map((n) => (n.id === newsletter.id ? newsletter : n))
-    );
+    setNewsletters((prev) => prev.map((n) => (n.id === newsletter.id ? newsletter : n)))
     if (!newsletter.id) {
-      setNewsletters((prev) => [newsletter, ...prev]);
+      setNewsletters((prev) => [newsletter, ...prev])
     }
-    setSelectedNewsletter(null);
-    setCurrentView("list");
-  };
+    setSelectedNewsletter(null)
+    setCurrentView("list")
+  }
 
   const handleCancel = () => {
-    setSelectedNewsletter(null);
-    setCurrentView("list");
-  };
+    setSelectedNewsletter(null)
+    setCurrentView("list")
+  }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this newsletter?")) return;
+    if (!confirm("Are you sure you want to delete this newsletter?")) return
 
     try {
-      const { error } = await supabase.from("newsletters").delete().eq("id", id);
-      if (error) throw error;
+      const { error } = await supabase.from("newsletters").delete().eq("id", id)
+      if (error) throw error
 
-      setNewsletters((prev) => prev.filter((n) => n.id !== id));
-      toast.success("Newsletter deleted successfully");
+      setNewsletters((prev) => prev.filter((n) => n.id !== id))
+      toast.success("Newsletter deleted successfully")
     } catch (error) {
-      console.error("Error deleting newsletter:", error);
-      toast.error("Failed to delete newsletter");
+      console.error("Error deleting newsletter:", error)
+      toast.error("Failed to delete newsletter")
     }
-  };
+  }
 
   const handleResend = async (newsletterId: string) => {
-    if (!confirm("Are you sure you want to resend this newsletter?")) return;
+    if (!confirm("Are you sure you want to resend this newsletter?")) return
 
     try {
       const response = await fetch("/api/newsletter/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newsletterId }),
-      });
+      })
 
-      const result = await response.json();
-      console.log(result, "Resend result");
-      if (!response.ok) throw new Error(result.error || "Failed to resend");
+      const result = await response.json()
+      console.log(result, "Resend result")
+      if (!response.ok) throw new Error(result.error || "Failed to resend")
 
-      toast.success(result.message);
-      fetchNewsletters(); 
+      toast.success(result.message)
+      fetchNewsletters()
     } catch (error) {
-      console.error("Error resending newsletter:", error);
-      toast.error("Failed to resend newsletter");
+      console.error("Error resending newsletter:", error)
+      toast.error("Failed to resend newsletter")
     }
-  };
+  }
 
   const handlePreview = (newsletter: Newsletter) => {
-    setPreviewNewsletter(newsletter);
-    setShowPreview(true);
-  };
+    setPreviewNewsletter(newsletter)
+    setShowPreview(true)
+  }
 
-  // New handler for subscribing
   const handleSubscribe = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (!subscriberEmail.trim()) {
-      toast.error("Email is required");
-      return;
+      toast.error("Email is required")
+      return
     }
 
-    setSubscribing(true);
+    setSubscribing(true)
     try {
       const response = await fetch("/api/newsletter/subscribe", {
         method: "POST",
@@ -137,99 +135,95 @@ export function NewsletterManager() {
           email: subscriberEmail.trim(),
           name: subscriberName.trim() || undefined,
         }),
-      });
+      })
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Failed to subscribe");
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || "Failed to subscribe")
 
-      toast.success("Successfully subscribed!");
-      setSubscriberEmail("");
-      setSubscriberName("");
-      setShowSubscriberDialog(false);
-      // Refetch subscribers to update count
+      toast.success("Successfully subscribed!")
+      setSubscriberEmail("")
+      setSubscriberName("")
+      setShowSubscriberDialog(false)
       if (refetchSubscribers) {
-        refetchSubscribers();
+        refetchSubscribers()
       }
     } catch (error) {
-      console.error("Error subscribing:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to subscribe");
+      console.error("Error subscribing:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to subscribe")
     } finally {
-      setSubscribing(false);
+      setSubscribing(false)
     }
-  };
-
-  if (loading || subscribersLoading) {
-    return <div>Loading...</div>;
   }
 
-  const draftCount = newsletters.filter((n) => n.status === "draft").length;
-  const sentCount = newsletters.filter((n) => n.status === "sent").length;
+  if (loading || subscribersLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-sm text-muted-foreground">Loading...</div>
+      </div>
+    )
+  }
+
+  const draftCount = newsletters.filter((n) => n.status === "draft").length
+  const sentCount = newsletters.filter((n) => n.status === "sent").length
 
   return (
-    <div className="space-y-6">
-      {/* Stats - Added Subscriber Count Card */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Total Newsletters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{newsletters.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Drafts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{draftCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Sent</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{sentCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Active Subscribers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{subscriberCount}</div>
-          </CardContent>
-        </Card>
-      </div>
-
+    <div>
       {/* List View */}
       {currentView === "list" && (
-        <>
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">Newsletters</h1>
-            <div className="flex gap-2">
-              <Button onClick={() => setShowSubscriberDialog(true)}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add Subscriber
-              </Button>
-              <Button onClick={handleNew}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Newsletter
-              </Button>
+        <div className="min-h-screen bg-background">
+          {/* Header */}
+          <div className="border-b border-border">
+            <div className="max-w-7xl mx-auto px-6 py-6">
+              <div className="flex flex-wrap gap-4 items-center justify-between">
+                <h1 className="text-2xl font-semibold">Newsletters</h1>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setShowSubscriberDialog(true)}>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Add Subscriber
+                  </Button>
+                  <Button onClick={handleNew}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Newsletter
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            {newsletters.map((newsletter) => (
-              <Card key={newsletter.id}>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="space-y-2">
-                      <h3 className="text-lg font-semibold">{newsletter.title}</h3>
+          {/* Stats */}
+          <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="grid gap-4 md:grid-cols-4 mb-8">
+              <div className="border border-border rounded-lg p-4">
+                <div className="text-xs font-medium text-muted-foreground mb-1">Total Newsletters</div>
+                <div className="text-2xl font-semibold">{newsletters.length}</div>
+              </div>
+              <div className="border border-border rounded-lg p-4">
+                <div className="text-xs font-medium text-muted-foreground mb-1">Drafts</div>
+                <div className="text-2xl font-semibold">{draftCount}</div>
+              </div>
+              <div className="border border-border rounded-lg p-4">
+                <div className="text-xs font-medium text-muted-foreground mb-1">Sent</div>
+                <div className="text-2xl font-semibold">{sentCount}</div>
+              </div>
+              <div className="border border-border rounded-lg p-4">
+                <div className="text-xs font-medium text-muted-foreground mb-1">Active Subscribers</div>
+                <div className="text-2xl font-semibold">{subscriberCount}</div>
+              </div>
+            </div>
+
+            {/* Newsletter List */}
+            <div className="space-y-3">
+              {newsletters.map((newsletter) => (
+                <div
+                  key={newsletter.id}
+                  className="border border-border rounded-lg p-6 hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                    <div className="space-y-2 flex-1">
+                      <h3 className="text-base font-medium">{newsletter.title}</h3>
                       <p className="text-sm text-muted-foreground">{newsletter.subject}</p>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={newsletter.status === "draft" ? "secondary" : "default"}>
+                      <div className="flex items-center gap-3">
+                        <Badge variant={newsletter.status === "draft" ? "secondary" : "default"} className="text-xs">
                           {newsletter.status}
                         </Badge>
                         {newsletter.sent_at && (
@@ -239,57 +233,42 @@ export function NewsletterManager() {
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePreview(newsletter)}
-                      >
-                        Preview
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" onClick={() => handlePreview(newsletter)}>
+                        <span className="md:inline hidden mr-2">Preview</span>
+                        <span className="md:hidden">Preview</span>
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(newsletter)}
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
+                      <Button variant="outline" size="sm" onClick={() => handleEdit(newsletter)}>
+                        <Edit className="h-4 w-4" />
+                        <span className="ml-2 md:inline hidden">Edit</span>
                       </Button>
                       {newsletter.status === "sent" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleResend(newsletter.id)}
-                        >
-                          <Send className="h-4 w-4 mr-2" />
-                          Resend
+                        <Button variant="outline" size="sm" onClick={() => handleResend(newsletter.id)}>
+                          <Send className="h-4 w-4" />
+                          <span className="ml-2 md:inline hidden">Resend</span>
                         </Button>
                       )}
                       <Button
-                        variant="destructive"
+                        variant="outline"
                         size="sm"
                         onClick={() => handleDelete(newsletter.id)}
+                        className="text-destructive hover:text-destructive"
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-            {newsletters.length === 0 && (
-              <Card>
-                <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground">No newsletters yet.</p>
-                  <Button onClick={handleNew} className="mt-4">
-                    Create your first newsletter
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+                </div>
+              ))}
+              {newsletters.length === 0 && (
+                <div className="border border-border rounded-lg p-12 text-center">
+                  <p className="text-sm text-muted-foreground mb-4">No newsletters yet.</p>
+                  <Button onClick={handleNew}>Create your first newsletter</Button>
+                </div>
+              )}
+            </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* Editor View */}
@@ -310,15 +289,13 @@ export function NewsletterManager() {
           </DialogHeader>
           {previewNewsletter && (
             <div className="h-full overflow-auto p-4">
-              <div
-                dangerouslySetInnerHTML={{ __html: previewNewsletter.content }}
-              />
+              <div dangerouslySetInnerHTML={{ __html: previewNewsletter.content }} />
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* New Subscriber Dialog */}
+      {/* Subscriber Dialog */}
       <Dialog open={showSubscriberDialog} onOpenChange={setShowSubscriberDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -326,8 +303,10 @@ export function NewsletterManager() {
           </DialogHeader>
           <form onSubmit={handleSubscribe}>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -337,8 +316,10 @@ export function NewsletterManager() {
                   required
                 />
               </div>
-              <div>
-                <Label htmlFor="name">Name (Optional)</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-sm font-medium">
+                  Name (Optional)
+                </Label>
                 <Input
                   id="name"
                   type="text"
@@ -360,5 +341,5 @@ export function NewsletterManager() {
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }

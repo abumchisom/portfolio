@@ -1,10 +1,12 @@
 "use client";
 
+import type React from "react";
+
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -13,37 +15,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useToast } from "@/hooks/use-toast";
 import { createClient } from "@/lib/supabase/client";
 import {
-  Plus,
-  Save,
+  Settings,
+  Trash2,
   Clock,
   Hash,
   FileText,
-  Settings,
-  Trash2,
-  EyeOff,
-  MoreHorizontal,
+  ArrowLeft,
 } from "lucide-react";
 import type { Blog } from "@/lib/types";
+import { AnyAaaaRecord } from "dns";
+import { RichTextEditor } from "../ui/rich-text-editor";
 
 export function BlogEditor() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
-  const [draftBlogs, setDraftBlogs] = useState<Blog[]>([]);
-  const [publishedBlogs, setPublishedBlogs] = useState<Blog[]>([]);
   const [selectedBlog, setSelectedBlog] = useState<Partial<Blog> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const { toast } = useToast();
   const supabase = createClient();
@@ -51,12 +44,6 @@ export function BlogEditor() {
   useEffect(() => {
     loadBlogs();
   }, []);
-
-  useEffect(() => {
-    // Separate blogs by status
-    setDraftBlogs(blogs.filter((blog) => blog.status === "draft"));
-    setPublishedBlogs(blogs.filter((blog) => blog.status === "published"));
-  }, [blogs]);
 
   const loadBlogs = async () => {
     try {
@@ -111,15 +98,13 @@ export function BlogEditor() {
   ) => {
     setIsSaving(true);
     try {
-      // Generate slug if not provided
       if (blogData.title && !blogData.slug) {
         blogData.slug = generateSlug(blogData.title);
       }
 
-      // Set status
       if (unpublish) {
         blogData.status = "draft";
-        delete blogData.published_at; // Clear published_at when unpublishing
+        delete blogData.published_at;
       } else if (publish) {
         blogData.status = "published";
         blogData.published_at = new Date().toISOString();
@@ -128,13 +113,11 @@ export function BlogEditor() {
       }
 
       if (selectedBlog?.id) {
-        // Update existing blog
         const updateData = {
           ...blogData,
           updated_at: new Date().toISOString(),
         };
 
-        // Ensure we don't overwrite published_at unless publishing
         if (unpublish) {
           updateData.published_at = undefined;
         }
@@ -146,7 +129,6 @@ export function BlogEditor() {
 
         if (error) throw error;
       } else {
-        // Create new blog
         const { data, error } = await supabase
           .from("blogs")
           .insert(blogData)
@@ -194,6 +176,7 @@ export function BlogEditor() {
 
       if (selectedBlog?.id === id) {
         setSelectedBlog(null);
+        setShowEditor(false);
       }
       loadBlogs();
     } catch (error) {
@@ -217,253 +200,228 @@ export function BlogEditor() {
       status: "draft",
       tags: [],
     });
+    setShowEditor(true);
   };
 
+  const draftBlogs = blogs.filter((blog) => blog.status === "draft");
+  const publishedBlogs = blogs.filter((blog) => blog.status === "published");
+
   if (isLoading) {
-    return <div>Loading blog editor...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
   }
 
-  return (
-    <div className="flex h-[calc(100vh-200px)] gap-6">
-      {/* Left Sidebar */}
-      <div className="w-80 flex flex-col gap-4">
-        <Button onClick={createNewBlog} className="w-full">
-          <Plus className="h-4 w-4 mr-2" />
-          New Blog Post
-        </Button>
+  if (!showEditor) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-medium">Blog Posts</h1>
+              <Button onClick={createNewBlog}>New Post</Button>
+            </div>
+          </div>
+        </div>
 
-        {/* Draft Blogs */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Draft Posts Section */}
+          <div className="mb-10">
+            <h2 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
               Draft Posts ({draftBlogs.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 max-h-60 overflow-y-auto">
-            {draftBlogs.map((blog) => (
-              <div
-                key={blog.id}
-                className={`group p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
-                  selectedBlog?.id === blog.id
-                    ? "bg-muted border-primary"
-                    : "bg-card"
-                }`}
-                onClick={() => setSelectedBlog(blog)}
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <h4 className="font-medium text-sm line-clamp-1">
-                    {blog.title || "Untitled"}
-                  </h4>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                      >
-                        <MoreHorizontal className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(blog.id);
-                        }}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {draftBlogs.map((blog) => (
+                <div
+                  key={blog.id}
+                  className="border bg-card hover:bg-accent/50 transition-colors cursor-pointer p-6"
+                  onClick={() => {
+                    setSelectedBlog(blog);
+                    setShowEditor(true);
+                  }}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-medium line-clamp-2 flex-1">
+                        {blog.title || "Untitled"}
+                      </h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      {blog.excerpt || "No excerpt"}
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+                      <span>
+                        {new Date(blog.updated_at).toLocaleDateString()}
+                      </span>
+                      {blog.featured && (
+                        <Badge variant="secondary">Featured</Badge>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground line-clamp-2">
-                  {blog.excerpt || "No excerpt"}
-                </p>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(blog.updated_at).toLocaleDateString()}
-                  </span>
-                  {blog.featured && (
-                    <Badge variant="secondary" className="text-xs">
-                      Featured
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
             {draftBlogs.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="text-sm text-muted-foreground text-center py-8">
                 No draft posts
               </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Published Blogs */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">
+          {/* Published Posts Section */}
+          <div>
+            <h2 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
               Published Posts ({publishedBlogs.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 max-h-60 overflow-y-auto">
-            {publishedBlogs.map((blog) => (
-              <div
-                key={blog.id}
-                className={`group p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
-                  selectedBlog?.id === blog.id
-                    ? "bg-muted border-primary"
-                    : "bg-card"
-                }`}
-                onClick={() => setSelectedBlog(blog)}
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <h4 className="font-medium text-sm line-clamp-1">
-                    {blog.title}
-                  </h4>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100"
-                      >
-                        <MoreHorizontal className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSave(blog, false, true);
-                        }}
-                      >
-                        <EyeOff className="h-4 w-4 mr-2" />
-                        Unpublish
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(blog.id);
-                        }}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-2">
-                  {blog.excerpt}
-                </p>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-muted-foreground">
-                    {blog.published_at
-                      ? new Date(blog.published_at).toLocaleDateString()
-                      : ""}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Badge className="text-xs">Published</Badge>
-                    {blog.featured && (
-                      <Badge variant="secondary" className="text-xs">
-                        Featured
-                      </Badge>
-                    )}
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {publishedBlogs.map((blog) => (
+                <div
+                  key={blog.id}
+                  className="border bg-card hover:bg-accent/50 transition-colors cursor-pointer p-6"
+                  onClick={() => {
+                    setSelectedBlog(blog);
+                    setShowEditor(true);
+                  }}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-medium line-clamp-2 flex-1">
+                        {blog.title}
+                      </h3>
+                      <Badge>Published</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      {blog.excerpt}
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-2">
+                      <span>
+                        {blog.published_at
+                          ? new Date(blog.published_at).toLocaleDateString()
+                          : ""}
+                      </span>
+                      {blog.featured && (
+                        <Badge variant="secondary">Featured</Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
             {publishedBlogs.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="text-sm text-muted-foreground text-center py-8">
                 No published posts
               </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+
+          {blogs.length === 0 && (
+            <div className="text-center py-16">
+              <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground mb-6">No blog posts yet</p>
+              <Button onClick={createNewBlog}>Create Your First Post</Button>
+            </div>
+          )}
+        </div>
       </div>
+    );
+  }
 
-      {/* Right Content Area */}
-      <div className="flex-1 flex flex-col">
-        {selectedBlog ? (
-          <>
-            {/* Editor Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Input
-                  value={selectedBlog.title || ""}
-                  onChange={(e) =>
-                    setSelectedBlog({ ...selectedBlog, title: e.target.value })
-                  }
-                  placeholder="Blog post title..."
-                  className="text-lg font-semibold border-none shadow-none px-0 focus-visible:ring-0"
-                />
-              </div>
-              <div className="flex items-center gap-2">
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Editor Header */}
+      <div className="border-b">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <Button
+              onClick={() => setShowEditor(false)}
+              variant="ghost"
+              size="sm"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <div className="flex items-center gap-2">
+              {selectedBlog?.id && (
                 <Button
-                  variant="outline"
+                  onClick={() => handleDelete(selectedBlog.id!)}
+                  variant="ghost"
                   size="sm"
-                  onClick={() => handleSave(selectedBlog)}
-                  disabled={isSaving}
+                  className="text-destructive hover:text-destructive"
                 >
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? "Saving..." : "Save Draft"}
+                  <Trash2 className="h-4 w-4" />
                 </Button>
-                <Dialog open={showSettings} onOpenChange={setShowSettings}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Settings
-                    </Button>
-                  </DialogTrigger>
-                  <BlogSettingsDialog
-                    blog={selectedBlog}
-                    onSave={handleSave}
-                    onClose={() => setShowSettings(false)}
-                    isSaving={isSaving}
-                    generateSlug={generateSlug}
-                  />
-                </Dialog>
-              </div>
-            </div>
-
-            {/* Rich Text Editor */}
-            <div className="flex-1">
-              <RichTextEditor
-                value={selectedBlog.content || ""}
-                onChange={(content) =>
-                  setSelectedBlog({ ...selectedBlog, content })
-                }
-                placeholder="Start writing your blog post..."
-                className="h-full"
-                showImageUpload={true}
-                onImageUpload={async (file) => {
-                  // TODO: Implement image upload to storage
-                  return URL.createObjectURL(file);
-                }}
-              />
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">
-                No blog post selected
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                Select a blog post from the sidebar or create a new one to start
-                editing.
-              </p>
-              <Button onClick={createNewBlog}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Post
+              )}
+              <Dialog open={showSettings} onOpenChange={setShowSettings}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Button>
+                </DialogTrigger>
+                <BlogSettingsDialog
+                  blog={selectedBlog}
+                  onSave={handleSave}
+                  onClose={() => setShowSettings(false)}
+                  isSaving={isSaving}
+                  generateSlug={generateSlug}
+                  countWords={countWords}
+                  countParagraphs={countParagraphs}
+                  calculateReadingTime={calculateReadingTime}
+                />
+              </Dialog>
+              <Button
+                onClick={() => handleSave(selectedBlog || {})}
+                variant="outline"
+                size="sm"
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Draft"}
+              </Button>
+              <Button
+                onClick={() => handleSave(selectedBlog || {}, true)}
+                size="sm"
+                disabled={isSaving}
+              >
+                {isSaving ? "Publishing..." : "Publish"}
               </Button>
             </div>
           </div>
-        )}
+        </div>
+      </div>
+
+      {/* Editor Content */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-6">
+          {/* Title Input */}
+          <Input
+            value={selectedBlog?.title || ""}
+            onChange={(e) =>
+              setSelectedBlog({ ...selectedBlog, title: e.target.value })
+            }
+            placeholder="Post title..."
+            className="text-3xl font-semibold"
+          />
+
+          {/* Content Editor */}
+          <RichTextEditor
+            value={selectedBlog?.content || ""}
+            onChange={(e: any) =>
+              setSelectedBlog({
+                ...selectedBlog,
+                content: e.target.value,
+              })
+            }
+            placeholder="Start writing your blog post..."
+            className="h-full"
+            showImageUpload={true}
+            onImageUpload={async (file) => {
+              // TODO:  image upload to storage
+              return URL.createObjectURL(file);
+            }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -475,63 +433,32 @@ function BlogSettingsDialog({
   onClose,
   isSaving,
   generateSlug,
+  countWords,
+  countParagraphs,
+  calculateReadingTime,
 }: {
-  blog: Partial<Blog>;
+  blog: Partial<Blog> | null;
   onSave: (blog: Partial<Blog>, publish?: boolean, unpublish?: boolean) => void;
   onClose: () => void;
   isSaving: boolean;
   generateSlug: (title: string) => string;
+  countWords: (content: string) => number;
+  countParagraphs: (content: string) => number;
+  calculateReadingTime: (content: string) => number;
 }) {
-  const [formData, setFormData] = useState(blog);
+  const [formData, setFormData] = useState(blog || {});
   const [featuredImageFile, setFeaturedImageFile] = useState<File | null>(null);
   const supabase = createClient();
   const { toast } = useToast();
 
-  // Update formData when blog prop changes (e.g., title updated in main editor)
   useEffect(() => {
     setFormData((prev) => ({ ...prev, ...blog }));
   }, [blog]);
 
-  // Auto-set suggestions on dialog mount if empty
-  useEffect(() => {
-    if (blog.content) {
-      setFormData((prev) => {
-        const newData = { ...prev };
-        const suggestedTags = getSuggestedTags(blog.content || "");
-        const suggestedCategory = getSuggestedCategory(suggestedTags);
-        if (!newData.category) {
-          newData.category = suggestedCategory;
-        }
-        if (!newData.tags?.length) {
-          newData.tags = suggestedTags;
-        }
-        return newData;
-      });
-    }
-  }, []); // Only run once on mount
-
-  const handleTagsChange = (value: string) => {
-    const tags = value
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-    setFormData({ ...formData, tags });
-  };
-
-  // Auto-generate slug from title if not set
   const computedSlug = useMemo(() => {
     if (formData.slug) return formData.slug;
     return generateSlug(formData.title || "");
   }, [formData.slug, formData.title, generateSlug]);
-
-  const suggestedTags = useMemo(
-    () => getSuggestedTags(formData.content || ""),
-    [formData.content]
-  );
-  const suggestedCategory = useMemo(
-    () => getSuggestedCategory(suggestedTags),
-    [suggestedTags]
-  );
 
   const wordCount = formData.content ? countWords(formData.content) : 0;
   const paragraphCount = formData.content
@@ -541,23 +468,12 @@ function BlogSettingsDialog({
     ? calculateReadingTime(formData.content)
     : 0;
 
-  const finalData = useMemo(
-    () => ({
-      ...formData,
-      slug: computedSlug,
-      category: formData.category || suggestedCategory,
-      tags: formData.tags?.length ? formData.tags : suggestedTags,
-    }),
-    [formData, computedSlug, suggestedCategory, suggestedTags]
-  );
-
   const handleFeaturedImageChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
     if (file) {
       setFeaturedImageFile(file);
-      // Preview the image
       const reader = new FileReader();
       reader.onload = (event) => {
         setFormData((prev) => ({
@@ -571,8 +487,8 @@ function BlogSettingsDialog({
 
   const handleSaveWithUpload = async (publish = false, unpublish = false) => {
     try {
-      let updatedData = { ...finalData };
-      // Handle featured image upload if a new file is selected
+      let updatedData = { ...formData, slug: computedSlug };
+
       if (featuredImageFile) {
         const fileName = `private/blog-${Date.now()}-${featuredImageFile.name}`;
         const { error: uploadError } = await supabase.storage
@@ -603,7 +519,7 @@ function BlogSettingsDialog({
   };
 
   return (
-    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+    <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Blog Post Settings</DialogTitle>
       </DialogHeader>
@@ -643,7 +559,7 @@ function BlogSettingsDialog({
         {/* Form Fields */}
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="slug">URL Slug (Auto-generated from title, editable)</Label>
+            <Label htmlFor="slug">URL Slug</Label>
             <Input
               id="slug"
               value={computedSlug}
@@ -653,7 +569,7 @@ function BlogSettingsDialog({
               placeholder="auto-generated-from-title"
             />
             <p className="text-xs text-muted-foreground">
-              Edit to customize the URL slug. Clear to regenerate from title.
+              Auto-generated from title. Edit to customize.
             </p>
           </div>
 
@@ -683,20 +599,12 @@ function BlogSettingsDialog({
               </div>
               {formData.image_url && (
                 <img
-                  src={
-                    typeof formData.image_url === "string"
-                      ? formData.image_url
-                      : formData.image_url
-                  }
+                  src={(formData.image_url as string) || "/placeholder.svg"}
                   alt="Featured image preview"
-                  className="w-24 h-24 object-cover border rounded"
+                  className="w-24 h-24 object-cover border"
                 />
               )}
             </div>
-            <p className="text-sm text-muted-foreground">
-              Upload a featured image (JPG, PNG). It will be stored securely in
-              Supabase Storage.
-            </p>
           </div>
 
           <div className="space-y-2">
@@ -707,7 +615,7 @@ function BlogSettingsDialog({
               onChange={(e) =>
                 setFormData({ ...formData, canonical_url: e.target.value })
               }
-              placeholder="https://medium.com/@you/original-article"
+              placeholder="https://example.com/original-article"
             />
           </div>
 
@@ -723,65 +631,23 @@ function BlogSettingsDialog({
                     category: e.target.value || undefined,
                   })
                 }
-                placeholder="Technical Writing, Cybersecurity, etc."
+                placeholder="Technology, Design, etc."
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="tags">Tags</Label>
-              <div
-                className="flex flex-wrap items-center gap-2 border rounded-md px-2 py-2 min-h-[42px] focus-within:ring-2 focus-within:ring-ring"
-                onClick={() => document.getElementById("tagInput")?.focus()}
-              >
-                {formData.tags?.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="flex items-center gap-1 bg-gray-100 text-gray-700 text-sm px-2 py-1 rounded"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newTags = formData.tags!.filter(
-                          (_, i) => i !== index
-                        );
-                        setFormData({ ...formData, tags: newTags });
-                      }}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-
-                <input
-                  id="tagInput"
-                  type="text"
-                  className="flex-grow outline-none border-none bg-transparent text-sm"
-                  placeholder="Type and press Enter..."
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const value = e.currentTarget.value.trim();
-                      if (value && !formData.tags?.includes(value)) {
-                        setFormData({
-                          ...formData,
-                          tags: [...(formData.tags || []), value],
-                        });
-                      }
-                      e.currentTarget.value = "";
-                    } else if (
-                      e.key === "Backspace" &&
-                      e.currentTarget.value === "" &&
-                      formData.tags?.length
-                    ) {
-                      // Remove last tag when backspace pressed with empty input
-                      const newTags = [...formData.tags];
-                      newTags.pop();
-                      setFormData({ ...formData, tags: newTags });
-                    }
-                  }}
-                />
-              </div>
+              <Input
+                id="tags"
+                value={formData.tags?.join(", ") || ""}
+                onChange={(e) => {
+                  const tags = e.target.value
+                    .split(",")
+                    .map((tag) => tag.trim())
+                    .filter(Boolean);
+                  setFormData({ ...formData, tags });
+                }}
+                placeholder="react, nextjs, typescript"
+              />
             </div>
           </div>
 
@@ -795,143 +661,28 @@ function BlogSettingsDialog({
             />
             <Label htmlFor="featured">Featured Post</Label>
           </div>
-
-          {/* Unpublish Switch for Published Posts */}
-          {formData.status === "published" && (
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="unpublish"
-                checked={false} // Always false, as it's a toggle action
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    handleSaveWithUpload(false, true);
-                  }
-                }}
-              />
-              <Label htmlFor="unpublish">Unpublish (Make Draft)</Label>
-            </div>
-          )}
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={onClose}>
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => handleSaveWithUpload(false)}
-              disabled={isSaving}
-            >
-              Save Draft
-            </Button>
-            <Button
-              onClick={() => handleSaveWithUpload(true)}
-              disabled={isSaving}
-            >
-              {formData.status === "published" ? "Update" : "Publish"}
-            </Button>
-          </div>
+          <Button
+            onClick={() => handleSaveWithUpload()}
+            disabled={isSaving}
+            variant="outline"
+          >
+            {isSaving ? "Saving..." : "Save Draft"}
+          </Button>
+          <Button
+            onClick={() => handleSaveWithUpload(true)}
+            disabled={isSaving}
+          >
+            {isSaving ? "Publishing..." : "Publish"}
+          </Button>
         </div>
       </div>
     </DialogContent>
   );
-}
-
-// Helper functions
-function countWords(content: string): number {
-  return content
-    .replace(/<[^>]*>/g, "")
-    .split(/\s+/)
-    .filter((word) => word.length > 0).length;
-}
-
-function countParagraphs(content: string): number {
-  return content.split(/\n\s*\n/).filter((p) => p.trim().length > 0).length;
-}
-
-function calculateReadingTime(content: string): number {
-  const words = countWords(content);
-  return Math.ceil(words / 200);
-}
-
-const stopWords = [
-  "the",
-  "a",
-  "an",
-  "and",
-  "or",
-  "but",
-  "in",
-  "on",
-  "at",
-  "to",
-  "for",
-  "of",
-  "with",
-  "by",
-  "is",
-  "are",
-  "was",
-  "were",
-  "be",
-  "been",
-  "have",
-  "has",
-  "had",
-  "do",
-  "does",
-  "did",
-  "will",
-  "would",
-  "could",
-  "should",
-  "may",
-  "might",
-  "can",
-  "this",
-  "that",
-  "these",
-  "those",
-  "i",
-  "you",
-  "he",
-  "she",
-  "it",
-  "we",
-  "they",
-  "me",
-  "him",
-  "her",
-  "us",
-  "them",
-  "my",
-  "your",
-  "his",
-  "its",
-  "our",
-  "their",
-];
-
-function getSuggestedTags(content: string): string[] {
-  const text = content.replace(/<[^>]*>/g, "").toLowerCase();
-  const words = text
-    .split(/\s+/)
-    .filter((word) => word.length > 3 && !stopWords.includes(word));
-  const freq: Record<string, number> = words.reduce(
-    (acc: Record<string, number>, word) => {
-      acc[word] = (acc[word] || 0) + 1;
-      return acc;
-    },
-    {}
-  );
-  return Object.entries(freq)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 5)
-    .map(([word]) => word);
-}
-
-function getSuggestedCategory(suggestedTags: string[]): string {
-  return suggestedTags[0] || "";
 }

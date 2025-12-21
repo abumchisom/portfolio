@@ -1,15 +1,23 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { Search, Download, UserX, RefreshCw, UserPlus } from "lucide-react"
+import { Search, Download, UserX, RefreshCw, UserPlus, Upload } from "lucide-react"
 import type { NewsletterSubscriber } from "@/lib/types"
 
 export function SubscribersManager() {
@@ -17,12 +25,12 @@ export function SubscribersManager() {
   const [filteredSubscribers, setFilteredSubscribers] = useState<NewsletterSubscriber[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-
-  // New states for subscriber dialog
   const [showSubscriberDialog, setShowSubscriberDialog] = useState(false)
   const [subscriberEmail, setSubscriberEmail] = useState("")
   const [subscriberName, setSubscriberName] = useState("")
   const [subscribing, setSubscribing] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { toast } = useToast()
   const supabase = createClient()
@@ -61,7 +69,6 @@ export function SubscribersManager() {
     }
   }
 
-  // New handler for adding subscriber
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!subscriberEmail.trim()) {
@@ -186,75 +193,169 @@ export function SubscribersManager() {
     window.URL.revokeObjectURL(url)
   }
 
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
+      toast({
+        title: "Error",
+        description: "Please upload a valid CSV file.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setImporting(true)
+    try {
+      const text = await file.text()
+      const lines = text.split("\n").filter((line) => line.trim())
+
+      // Skip header row if it exists
+      const dataLines = lines[0].toLowerCase().includes("email") ? lines.slice(1) : lines
+
+      const emails: Array<{ email: string; name?: string }> = []
+
+      for (const line of dataLines) {
+        const values = line.split(",").map((v) => v.trim().replace(/^["']|["']$/g, ""))
+        const email = values[0]
+        const name = values[1] || undefined
+
+        if (email && email.includes("@")) {
+          emails.push({ email, name })
+        }
+      }
+
+      if (emails.length === 0) {
+        toast({
+          title: "Error",
+          description: "No valid emails found in the CSV file.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Import subscribers in batch
+      let successCount = 0
+      let errorCount = 0
+
+      for (const { email, name } of emails) {
+        try {
+          const response = await fetch("/api/newsletter/subscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, name }),
+          })
+
+          if (response.ok) {
+            successCount++
+          } else {
+            errorCount++
+          }
+        } catch {
+          errorCount++
+        }
+      }
+
+      toast({
+        title: "Import Complete",
+        description: `Successfully imported ${successCount} subscriber(s). ${errorCount > 0 ? `${errorCount} failed.` : ""}`,
+      })
+
+      loadSubscribers()
+    } catch (error) {
+      console.error("Error importing CSV:", error)
+      toast({
+        title: "Error",
+        description: "Failed to import CSV file.",
+        variant: "destructive",
+      })
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    }
+  }
+
   const activeCount = subscribers.filter((sub) => sub.status === "active").length
   const unsubscribedCount = subscribers.filter((sub) => sub.status === "unsubscribed").length
 
   if (isLoading) {
-    return <div>Loading subscribers...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-sm text-muted-foreground">Loading...</div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Subscribers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{subscribers.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{activeCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unsubscribed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{unsubscribedCount}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex justify-between items-center gap-4">
-        <Button onClick={() => setShowSubscriberDialog(true)}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Add Subscriber
-        </Button>
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search subscribers..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+    <div className="min-h-screen bg-background">
+      <div className="border-b border-border">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold">Subscribers</h1>
+            <Button onClick={() => setShowSubscriberDialog(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add Subscriber
+            </Button>
+          </div>
         </div>
-        <Button onClick={exportSubscribers} variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Export CSV
-        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Subscribers ({filteredSubscribers.length})</CardTitle>
-          <CardDescription>Manage your newsletter subscribers</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {filteredSubscribers.map((subscriber) => (
-              <div key={subscriber.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">{subscriber.email}</p>
-                    <Badge variant={subscriber.status === "active" ? "default" : "secondary"}>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-8">
+          <div className="border border-border rounded-lg p-4">
+            <div className="text-xs font-medium text-muted-foreground mb-1">Total Subscribers</div>
+            <div className="text-2xl font-semibold">{subscribers.length}</div>
+          </div>
+          <div className="border border-border rounded-lg p-4">
+            <div className="text-xs font-medium text-muted-foreground mb-1">Active</div>
+            <div className="text-2xl font-semibold">{activeCount}</div>
+          </div>
+          <div className="border border-border rounded-lg p-4">
+            <div className="text-xs font-medium text-muted-foreground mb-1">Unsubscribed</div>
+            <div className="text-2xl font-semibold">{unsubscribedCount}</div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search subscribers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            className="sm:w-auto w-full bg-transparent"
+            disabled={importing}
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            {importing ? "Importing..." : "Import CSV"}
+          </Button>
+          <input ref={fileInputRef} type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+          <Button onClick={exportSubscribers} variant="outline" className="sm:w-auto w-full bg-transparent">
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
+
+        <div className="space-y-3">
+          {filteredSubscribers.map((subscriber) => (
+            <div
+              key={subscriber.id}
+              className="border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="space-y-1 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-medium truncate">{subscriber.email}</p>
+                    <Badge variant={subscriber.status === "active" ? "default" : "secondary"} className="text-xs">
                       {subscriber.status}
                     </Badge>
                   </div>
@@ -262,38 +363,47 @@ export function SubscribersManager() {
                   <p className="text-xs text-muted-foreground">
                     Subscribed: {new Date(subscriber.subscribed_at).toLocaleDateString()}
                     {subscriber.unsubscribed_at && (
-                      <span className="ml-2">
-                        • Unsubscribed: {new Date(subscriber.unsubscribed_at).toLocaleDateString()}
+                      <span className="block sm:inline sm:ml-2">
+                        Unsubscribed: {new Date(subscriber.unsubscribed_at).toLocaleDateString()}
                       </span>
                     )}
                   </p>
                 </div>
                 {subscriber.status === "active" ? (
-                  <Button variant="outline" size="sm" onClick={() => handleUnsubscribe(subscriber.id)}>
-                    <UserX className="h-4 w-4 mr-2" />
-                    Unsubscribe
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleUnsubscribe(subscriber.id)}
+                    className="sm:w-auto w-full"
+                  >
+                    <UserX className="h-4 w-4" />
+                    <span className="ml-2">Unsubscribe</span>
                   </Button>
                 ) : (
-                  <Button variant="outline" size="sm" onClick={() => handleResubscribe(subscriber.id)}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Resubscribe
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleResubscribe(subscriber.id)}
+                    className="sm:w-auto w-full"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    <span className="ml-2">Resubscribe</span>
                   </Button>
                 )}
               </div>
-            ))}
+            </div>
+          ))}
 
-            {filteredSubscribers.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  {searchTerm ? "No subscribers found matching your search." : "No subscribers yet."}
-                </p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          {filteredSubscribers.length === 0 && (
+            <div className="border border-border rounded-lg p-12 text-center">
+              <p className="text-sm text-muted-foreground">
+                {searchTerm ? "No subscribers found matching your search." : "No subscribers yet."}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
 
-      {/* New Subscriber Dialog */}
       <Dialog open={showSubscriberDialog} onOpenChange={setShowSubscriberDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -302,8 +412,10 @@ export function SubscribersManager() {
           </DialogHeader>
           <form onSubmit={handleSubscribe}>
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -313,8 +425,10 @@ export function SubscribersManager() {
                   required
                 />
               </div>
-              <div>
-                <Label htmlFor="name">Name (Optional)</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-sm font-medium">
+                  Name (Optional)
+                </Label>
                 <Input
                   id="name"
                   type="text"

@@ -4,6 +4,7 @@ import "./globals.css";
 import { Suspense } from "react";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "next-themes"; 
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -20,13 +21,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={dmSans.className}>
-      <body
-      >
-        <Suspense fallback={null}>
-          <AuthProvider>{children}</AuthProvider>
-          <Toaster />
-        </Suspense>
+    <html lang="en" className={dmSans.className} suppressHydrationWarning>
+      <body>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Suspense fallback={null}>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+            <Toaster />
+          </Suspense>
+        </ThemeProvider>
       </body>
     </html>
   );
