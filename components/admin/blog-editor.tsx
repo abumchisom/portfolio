@@ -26,10 +26,17 @@ import {
   Hash,
   FileText,
   ArrowLeft,
+  MoreVertical,
 } from "lucide-react";
 import type { Blog } from "@/lib/types";
 import { AnyAaaaRecord } from "dns";
 import { RichTextEditor } from "../ui/rich-text-editor";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 export function BlogEditor() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -247,6 +254,62 @@ export function BlogEditor() {
                       <h3 className="font-medium line-clamp-2 flex-1">
                         {blog.title || "Untitled"}
                       </h3>
+                      {/* Kebab Menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => e.stopPropagation()}
+                            data-no-propagation
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {blog.status === "draft" ? (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSave(
+                                  {
+                                    ...blog,
+                                    status: "published",
+                                    published_at: new Date().toISOString(),
+                                  },
+                                  true
+                                );
+                              }}
+                            >
+                              Publish
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSave(
+                                  { ...blog, status: "draft" },
+                                  false,
+                                  true
+                                );
+                              }}
+                            >
+                              Unpublish (Save as Draft)
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(blog.id!);
+                            }}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-3">
                       {blog.excerpt || "No excerpt"}
@@ -286,11 +349,67 @@ export function BlogEditor() {
                   }}
                 >
                   <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center justify-between gap-2">
                       <h3 className="font-medium line-clamp-2 flex-1">
                         {blog.title}
                       </h3>
                       <Badge>Published</Badge>
+                      {/* Kebab Menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                          variant={"ghost"}
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => e.stopPropagation()}
+                            data-no-propagation // to prevent card click
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {blog.status === "draft" ? (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSave(
+                                  {
+                                    ...blog,
+                                    status: "published",
+                                    published_at: new Date().toISOString(),
+                                  },
+                                  true
+                                );
+                              }}
+                            >
+                              Publish
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSave(
+                                  { ...blog, status: "draft" },
+                                  false,
+                                  true
+                                );
+                              }}
+                            >
+                              Unpublish (Save as Draft)
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(blog.id!);
+                            }}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-3">
                       {blog.excerpt}
@@ -407,17 +526,17 @@ export function BlogEditor() {
           {/* Content Editor */}
           <RichTextEditor
             value={selectedBlog?.content || ""}
-            onChange={(e: any) =>
-              setSelectedBlog({
-                ...selectedBlog,
-                content: e.target.value,
-              })
+            onChange={(content) =>
+              setSelectedBlog((prev) => ({
+                ...prev,
+                content: content ?? "",
+              }))
             }
             placeholder="Start writing your blog post..."
             className="h-full"
             showImageUpload={true}
             onImageUpload={async (file) => {
-              // TODO:  image upload to storage
+              // TODO: image upload to storage
               return URL.createObjectURL(file);
             }}
           />

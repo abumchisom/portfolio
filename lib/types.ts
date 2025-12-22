@@ -23,7 +23,7 @@ export interface Project {
   content?: string
   category: "technical-writing" | "cybersecurity"
   featured: boolean
-  image_url?: string
+  image_url?: string | null
   project_url?: string
   github_url?: string
   technologies: string[]
