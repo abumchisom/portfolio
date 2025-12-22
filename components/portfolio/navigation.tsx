@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Menu, X } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { Logo } from "@/components/Logo" 
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
@@ -21,8 +22,9 @@ export function Navigation() {
     <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-sm border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-16">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="text-xl font-bold text-foreground">
-            Joseph Ofonagoro Chisom
+          {/* Logo - now uses dynamic image based on theme (including system preference) */}
+          <Link href="/" className="flex items-center">
+            <Logo />
           </Link>
 
           {/* Desktop Navigation */}
@@ -36,11 +38,12 @@ export function Navigation() {
                 {item.label}
               </Link>
             ))}
-            <ThemeToggle />  
+            <ThemeToggle />
           </div>
 
+          {/* Mobile Menu Button */}
           <div className="flex items-center gap-2 md:hidden">
-            <ThemeToggle />  
+            <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={() => setIsOpen(!isOpen)}>
               {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
